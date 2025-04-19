@@ -60,7 +60,8 @@ export const getStatusLabel = (status: RequestStatus): string => {
     case "rejected":
       return "Rejected";
     default:
-      return status.replace(/_/g, " ");
+      // Fix: Explicitly cast status to string to avoid 'never' type inference
+      return (status as string).replace(/_/g, " ");
   }
 };
 
@@ -86,6 +87,8 @@ export const getRoleLabel = (role: UserRole): string => {
     case "du_head":
       return "Department Head";
     default:
-      return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
+      // Fix: Explicitly cast role to string to avoid 'never' type inference
+      const roleAsString = role as string;
+      return roleAsString.charAt(0).toUpperCase() + roleAsString.slice(1).replace(/_/g, " ");
   }
 };
