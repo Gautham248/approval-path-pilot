@@ -17,15 +17,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Loader2, Clock, AlertTriangle, Info } from "lucide-react";
+import { CheckCircle2, Loader2, Clock, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ApprovalsPage = () => {
   const { currentUser } = useAuth();
-  const { getPendingApprovals } = useWorkflow();
+  const { getPendingApprovals, getCurrentRequests } = useWorkflow();
   const [pendingApprovals, setPendingApprovals] = useState<TravelRequest[]>([]);
+  const [allRequests, setAllRequests] = useState<TravelRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   useEffect(() => {
     const loadApprovals = async () => {
@@ -35,17 +37,36 @@ const ApprovalsPage = () => {
           const debugMessages: string[] = [];
           debugMessages.push(`Loading approvals for user ID: ${currentUser.id}, role: ${currentUser.role}`);
           
+          // Get all requests for debugging
+          const allReqs = await getCurrentRequests();
+          setAllRequests(allReqs);
+          debugMessages.push(`Total requests in system: ${allReqs.length}`);
+          
+          // Get pending approvals for current user
           const approvals = await getPendingApprovals(currentUser.id);
-          debugMessages.push(`Found ${approvals.length} pending approvals`);
+          debugMessages.push(`Found ${approvals.length} pending approvals for user ${currentUser.id}`);
           
           if (approvals.length === 0) {
             debugMessages.push("No pending approvals found. This could mean:");
             debugMessages.push("- No requests have been submitted that require your approval");
             debugMessages.push("- Requests are in a different status than expected");
             debugMessages.push("- There might be an issue with the approval chain");
+            
+            // Add details about all requests for debugging
+            if (allReqs.length > 0) {
+              debugMessages.push("\nAll requests in the system:");
+              allReqs.forEach(req => {
+                debugMessages.push(`Request #${req.request_id}: Status = ${req.current_status}, Requester = ${req.requester_id}`);
+                const approverIds = req.approval_chain.map(step => `${step.role}:${step.user_id}`).join(', ');
+                debugMessages.push(`  Approval Chain: ${approverIds}`);
+              });
+            } else {
+              debugMessages.push("There are no travel requests in the system yet.");
+            }
           } else {
             approvals.forEach(req => {
-              debugMessages.push(`Request #${req.request_id}: Status = ${req.current_status}`);
+              debugMessages.push(`Request #${req.request_id}: Status = ${req.current_status}, Requester = ${req.requester_id}`);
+              debugMessages.push(`  Approval chain: ${JSON.stringify(req.approval_chain)}`);
             });
           }
           
@@ -61,13 +82,24 @@ const ApprovalsPage = () => {
     };
 
     loadApprovals();
-  }, [currentUser, getPendingApprovals]);
+  }, [currentUser, getPendingApprovals, getCurrentRequests, refreshCounter]);
+
+  const handleRefresh = () => {
+    setRefreshCounter(prev => prev + 1);
+  };
 
   return (
     <PageLayout
       title="Pending Approvals"
       subtitle="Review and approve travel requests from your team"
     >
+      <div className="mb-4 flex justify-end">
+        <Button variant="outline" onClick={handleRefresh} className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -108,6 +140,56 @@ const ApprovalsPage = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* All requests in the system for debugging */}
+          {allRequests.length > 0 && (
+            <Card className="border-dashed border-blue-300">
+              <CardHeader>
+                <CardTitle className="text-blue-600">All Requests in System</CardTitle>
+                <CardDescription>
+                  Overview of all travel requests (admin view)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Requester</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Approval Chain</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allRequests.map((request) => (
+                        <TableRow key={request.request_id}>
+                          <TableCell>{request.request_id}</TableCell>
+                          <TableCell>{request.requester_id}</TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColorClass(request.current_status)}>
+                              {getStatusLabel(request.current_status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(request.created_at)}</TableCell>
+                          <TableCell>
+                            <div className="text-xs">
+                              {request.approval_chain.map((step, i) => (
+                                <div key={i}>
+                                  {step.role}: User #{step.user_id}
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : (
         <div className="space-y-6">

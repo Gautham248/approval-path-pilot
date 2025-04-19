@@ -17,9 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Search, Info } from "lucide-react";
+import { Loader2, Plus, Search, Info, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RequestsPage = () => {
@@ -29,6 +29,7 @@ const RequestsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<TravelRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [refreshCounter, setRefreshCounter] = useState(0);
   
   // Get status filter from URL or default to "all"
   const statusFilter = searchParams.get("status") || "all";
@@ -50,11 +51,15 @@ const RequestsPage = () => {
     };
 
     loadRequests();
-  }, [currentUser, getUserRequests]);
+  }, [currentUser, getUserRequests, refreshCounter]);
 
   const handleStatusFilter = (status: string) => {
     searchParams.set("status", status);
     setSearchParams(searchParams);
+  };
+
+  const handleRefresh = () => {
+    setRefreshCounter(prev => prev + 1);
   };
 
   // Filter requests based on status and search term
@@ -105,12 +110,18 @@ const RequestsPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button asChild>
-          <Link to="/requests/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Request
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefresh} className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button asChild>
+            <Link to="/requests/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Request
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue={statusFilter} onValueChange={handleStatusFilter}>
@@ -213,6 +224,40 @@ const RequestsPage = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Debug info card */}
+          {requests.length > 0 && (
+            <Card className="mt-6 border-dashed border-amber-300">
+              <CardHeader>
+                <CardTitle className="text-amber-600">Request Debug Information</CardTitle>
+                <CardDescription>
+                  Details about your travel requests
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm font-mono bg-gray-50 p-4 rounded-md">
+                  <p>Current user: ID {currentUser?.id}, Role: {currentUser?.role}</p>
+                  <p>Total requests: {requests.length}</p>
+                  
+                  {requests.map((request, index) => (
+                    <div key={index} className="mt-2 border-t pt-2">
+                      <p>Request #{request.request_id}:</p>
+                      <p className="ml-4">Status: {request.current_status}</p>
+                      <p className="ml-4">Requester: {request.requester_id}</p>
+                      <p className="ml-4">Approval Chain:</p>
+                      <ul className="ml-8 list-disc">
+                        {request.approval_chain.map((step, i) => (
+                          <li key={i}>
+                            {step.role}: User #{step.user_id}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </PageLayout>
