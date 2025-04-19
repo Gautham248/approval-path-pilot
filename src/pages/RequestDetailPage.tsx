@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useWorkflow } from "@/context/WorkflowContext";
@@ -17,7 +18,7 @@ import RequestActions from "@/components/requests/RequestActions";
 
 const RequestDetailPage = () => {
   const { id: requestId } = useParams<{ id: string }>();
-  const { getRequestById, getUserById } = useWorkflow();
+  const { getRequestById, getUserById, getTicketOptions } = useWorkflow();
   const { currentUser } = useAuth();
   const [requestData, setRequestData] = useState<TravelRequest | null>(null);
   const [requester, setRequester] = useState<User | null>(null);

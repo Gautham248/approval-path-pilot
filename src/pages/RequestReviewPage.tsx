@@ -181,7 +181,7 @@ const RequestReviewPage = () => {
   return (
     <PageLayout
       title={`Review Request #${requestId}`}
-      subtitle={`Current Status: ${requestData ? getStatusLabel(requestData.current_status) : "Loading..."}`}
+      subtitle={`Current Status: ${request ? getStatusLabel(request.current_status) : "Loading..."}`}
     >
       <div className="mb-6 p-4 rounded-lg flex items-center border border-blue-200 bg-blue-50">
         <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />

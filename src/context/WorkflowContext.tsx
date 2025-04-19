@@ -45,6 +45,9 @@ interface WorkflowContextType {
   canUserActOnRequest: (userId: number, requestId: number) => Promise<boolean>;
   getNextApprover: (request: TravelRequest) => Promise<User | null>;
   getCurrentRequests: () => Promise<TravelRequest[]>;
+  
+  // User data
+  getUserById: (userId: number) => Promise<User | null>;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -818,7 +821,10 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       canUserActOnRequest,
       getNextApprover,
-      getCurrentRequests
+      getCurrentRequests,
+      
+      // Add getUserById to the context
+      getUserById
     }}>
       {children}
     </WorkflowContext.Provider>
