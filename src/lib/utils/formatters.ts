@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { RequestStatus } from "@/types";
+import { RequestStatus, UserRole } from "@/types";
 
 // Format a date string to a readable format
 export const formatDate = (dateString: string, showTime: boolean = false): string => {
@@ -61,5 +61,31 @@ export const getStatusLabel = (status: RequestStatus): string => {
       return "Rejected";
     default:
       return status.replace(/_/g, " ");
+  }
+};
+
+// Get user initials from full name
+export const getInitials = (name: string): string => {
+  if (!name) return "";
+  
+  const parts = name.split(" ");
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+// Get a human-readable label for user role
+export const getRoleLabel = (role: UserRole): string => {
+  switch (role) {
+    case "employee":
+      return "Employee";
+    case "manager":
+      return "Manager";
+    case "admin":
+      return "Administrator";
+    case "du_head":
+      return "Department Head";
+    default:
+      return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
   }
 };

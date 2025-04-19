@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -59,7 +58,6 @@ const RequestReviewPage = () => {
       setIsLoading(true);
       try {
         if (requestId && currentUser) {
-          // Check if user can act on this request
           const canAct = await canUserActOnRequest(currentUser.id, requestId);
           setIsAllowed(canAct);
           
@@ -72,23 +70,19 @@ const RequestReviewPage = () => {
             return;
           }
           
-          // Get request details
           const requestData = await getRequestById(requestId);
           
           if (requestData) {
             setRequest(requestData);
             
-            // Get requester details
             const requesterData = await getUserById(requestData.requester_id);
             if (requesterData) {
               setRequester(requesterData);
             }
             
-            // Get ticket options if applicable
             const tickets = await getTicketOptions(requestId);
             setTicketOptions(tickets);
             
-            // If there's a selected ticket, set it as the currently selected option
             if (requestData.selected_ticket_id) {
               setSelectedTicketId(requestData.selected_ticket_id);
             }
@@ -116,7 +110,6 @@ const RequestReviewPage = () => {
     try {
       switch (decision) {
         case "approve":
-          // Special case for manager selection
           if (request.current_status === "manager_selection" && selectedTicketId) {
             await selectTicketOption(requestId, selectedTicketId, currentUser.id);
           } else {
@@ -136,7 +129,6 @@ const RequestReviewPage = () => {
         description: `Your decision has been recorded`,
       });
       
-      // Navigate back to the request detail page
       navigate(`/requests/${requestId}`);
     } catch (error) {
       console.error("Error submitting decision:", error);
@@ -175,13 +167,11 @@ const RequestReviewPage = () => {
     );
   }
 
-  // Determine which step the current user is reviewing
   const isManagerReview = request.current_status === "manager_pending";
   const isDUReview = request.current_status === "du_pending" || request.current_status === "du_final";
   const isAdminReview = request.current_status === "admin_pending";
   const isTicketSelection = request.current_status === "manager_selection";
 
-  // Get the current step title
   let stepTitle = "Review Request";
   if (isManagerReview) stepTitle = "Manager Review";
   if (isDUReview) stepTitle = "Department Head Review";
@@ -189,15 +179,10 @@ const RequestReviewPage = () => {
   if (isTicketSelection) stepTitle = "Select Ticket Option";
 
   return (
-    <PageLayout 
-      title={stepTitle}
-      subtitle={`Travel Request #${request.request_id}`}
-      backLink={{
-        label: "Back to Request",
-        href: `/requests/${request.request_id}`
-      }}
+    <PageLayout
+      title={`Review Request #${requestId}`}
+      subtitle={`Current Status: ${requestData ? getStatusLabel(requestData.current_status) : "Loading..."}`}
     >
-      {/* Status Banner */}
       <div className="mb-6 p-4 rounded-lg flex items-center border border-blue-200 bg-blue-50">
         <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />
         <span className="text-sm font-medium">
@@ -208,7 +193,6 @@ const RequestReviewPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
@@ -403,7 +387,6 @@ const RequestReviewPage = () => {
                   </div>
                 </RadioGroup>
               ) : (
-                // For ticket selection workflow
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <input 
@@ -482,7 +465,6 @@ const RequestReviewPage = () => {
           </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -531,7 +513,6 @@ const RequestReviewPage = () => {
                 </div>
 
                 {request.version_history.map((entry, index) => {
-                  // Skip the initial creation entry as we already display it above
                   if (index === 0) return null;
                   
                   return (

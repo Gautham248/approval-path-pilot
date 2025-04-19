@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -7,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { addDays, format } from "date-fns";
-import { CalendarIcon, Save, Send } from "lucide-react";
+import { CalendarIcon, Loader2, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -26,9 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
-import { User } from "@/types";
+import { User, ApprovalStep, UserRole } from "@/types";
 
-// Define form schema with zod
 const requestFormSchema = z.object({
   source: z.string().min(2, "Source must be at least 2 characters"),
   destination: z.string().min(2, "Destination must be at least 2 characters"),
@@ -66,14 +64,13 @@ type RequestFormValues = z.infer<typeof requestFormSchema>;
 
 const NewRequestPage = () => {
   const { currentUser } = useAuth();
-  const { createRequest, submitRequest, getUsersByRole } = useWorkflow();
+  const { createRequest, submitRequest } = useWorkflow();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [managers, setManagers] = useState<User[]>([]);
   const [duHeads, setDUHeads] = useState<User[]>([]);
   const [admins, setAdmins] = useState<User[]>([]);
 
-  // Initialize form with default values
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestFormSchema),
     defaultValues: {
@@ -88,6 +85,23 @@ const NewRequestPage = () => {
     },
   });
 
+  const getUsersByRole = async (role: UserRole): Promise<User[]> => {
+    const mockUsers: Record<UserRole, User[]> = {
+      employee: [],
+      manager: [
+        { id: 1, name: "Manager User", role: "manager", department: "Sales", email: "manager@example.com", hierarchy_chain: [1] }
+      ],
+      admin: [
+        { id: 2, name: "Admin User", role: "admin", department: "IT", email: "admin@example.com", hierarchy_chain: [2] }
+      ],
+      du_head: [
+        { id: 3, name: "Department Head", role: "du_head", department: "Operations", email: "duhead@example.com", hierarchy_chain: [3] }
+      ]
+    };
+
+    return mockUsers[role] || [];
+  };
+
   const onSubmit = async (data: RequestFormValues, isDraft: boolean = false) => {
     if (!currentUser) {
       toast({
@@ -101,7 +115,6 @@ const NewRequestPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Load approvers if not already loaded
       if (managers.length === 0) {
         const managersData = await getUsersByRole("manager");
         setManagers(managersData);
@@ -117,7 +130,6 @@ const NewRequestPage = () => {
         setAdmins(adminsData);
       }
 
-      // Find appropriate approvers
       const manager = managers.length > 0 ? managers[0] : null;
       const duHead = duHeads.length > 0 ? duHeads[0] : null;
       const admin = admins.length > 0 ? admins[0] : null;
@@ -131,14 +143,12 @@ const NewRequestPage = () => {
         return;
       }
 
-      // Create approval chain
-      const approvalChain = [
+      const approvalChain: ApprovalStep[] = [
         { role: "manager", user_id: manager.id },
         { role: "du_head", user_id: duHead.id },
         { role: "admin", user_id: admin.id },
       ];
 
-      // Create request object
       const requestData = {
         requester_id: currentUser.id,
         travel_details: {
@@ -154,10 +164,8 @@ const NewRequestPage = () => {
         approval_chain: approvalChain,
       };
 
-      // Create the request
       const requestId = await createRequest(requestData);
 
-      // If not a draft, submit the request
       if (!isDraft) {
         await submitRequest(requestId);
         toast({
@@ -171,7 +179,6 @@ const NewRequestPage = () => {
         });
       }
 
-      // Navigate to the request detail page
       navigate(`/requests/${requestId}`);
     } catch (error) {
       console.error("Error creating request:", error);
@@ -195,7 +202,6 @@ const NewRequestPage = () => {
           <div className="space-y-8">
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Source */}
                 <FormField
                   control={form.control}
                   name="source"
@@ -210,7 +216,6 @@ const NewRequestPage = () => {
                   )}
                 />
 
-                {/* Destination */}
                 <FormField
                   control={form.control}
                   name="destination"
@@ -227,7 +232,6 @@ const NewRequestPage = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Start Date */}
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -268,7 +272,6 @@ const NewRequestPage = () => {
                   )}
                 />
 
-                {/* End Date */}
                 <FormField
                   control={form.control}
                   name="endDate"
@@ -313,7 +316,6 @@ const NewRequestPage = () => {
                 />
               </div>
 
-              {/* Purpose */}
               <FormField
                 control={form.control}
                 name="purpose"
@@ -333,7 +335,6 @@ const NewRequestPage = () => {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Project Code */}
                 <FormField
                   control={form.control}
                   name="projectCode"
@@ -351,7 +352,6 @@ const NewRequestPage = () => {
                   )}
                 />
 
-                {/* Estimated Cost */}
                 <FormField
                   control={form.control}
                   name="estimatedCost"
@@ -374,7 +374,6 @@ const NewRequestPage = () => {
                 />
               </div>
 
-              {/* Additional Notes */}
               <FormField
                 control={form.control}
                 name="additionalNotes"
