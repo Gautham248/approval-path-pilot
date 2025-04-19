@@ -226,6 +226,12 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   const getPendingApprovals = async (approverId: number): Promise<TravelRequest[]> => {
     try {
       const allRequests = await getAllItems<TravelRequest>("requests");
+      const user = await getUserById(approverId);
+      
+      if (!user) {
+        console.error("User not found when fetching pending approvals");
+        return [];
+      }
       
       // Filter requests where the current approver is the specified user
       return allRequests.filter(request => {
@@ -236,21 +242,29 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           return false;
         }
         
-        // Determine if this user is the current approver based on role and status
-        let currentApproverIndex = -1;
+        // Check if the current user's role matches what's needed for the current status
+        const userRole = user.role;
         
-        if (current_status === "manager_pending") {
-          currentApproverIndex = approval_chain.findIndex(step => step.role === "manager");
-        } else if (current_status === "du_pending" || current_status === "du_final") {
-          currentApproverIndex = approval_chain.findIndex(step => step.role === "du_head");
-        } else if (current_status === "admin_pending") {
-          currentApproverIndex = approval_chain.findIndex(step => step.role === "admin");
-        } else if (current_status === "manager_selection") {
-          currentApproverIndex = approval_chain.findIndex(step => step.role === "manager");
-        }
-        
-        if (currentApproverIndex >= 0) {
-          return approval_chain[currentApproverIndex].user_id === approverId;
+        if (current_status === "manager_pending" && userRole === "manager") {
+          // For manager pending requests, check if this manager should see it
+          // (Either they're in the approval chain or there's no specific manager assigned yet)
+          const managerStep = approval_chain.find(step => step.role === "manager");
+          return !managerStep || managerStep.user_id === approverId;
+        } else if (current_status === "du_pending" && userRole === "du_head") {
+          // For department pending requests, check if this department head should see it
+          const duHeadStep = approval_chain.find(step => step.role === "du_head");
+          return !duHeadStep || duHeadStep.user_id === approverId;
+        } else if (current_status === "admin_pending" && userRole === "admin") {
+          // For admin pending requests, any admin can see them
+          return true;
+        } else if (current_status === "manager_selection" && userRole === "manager") {
+          // For manager selection, the original manager should see it
+          const managerStep = approval_chain.find(step => step.role === "manager");
+          return managerStep?.user_id === approverId;
+        } else if (current_status === "du_final" && userRole === "du_head") {
+          // For final approval, the department head should see it
+          const duHeadStep = approval_chain.find(step => step.role === "du_head");
+          return duHeadStep?.user_id === approverId;
         }
         
         return false;

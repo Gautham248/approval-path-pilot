@@ -17,24 +17,44 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Loader2, Clock, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Loader2, Clock, AlertTriangle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ApprovalsPage = () => {
   const { currentUser } = useAuth();
   const { getPendingApprovals } = useWorkflow();
   const [pendingApprovals, setPendingApprovals] = useState<TravelRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     const loadApprovals = async () => {
       setIsLoading(true);
       try {
         if (currentUser) {
+          const debugMessages: string[] = [];
+          debugMessages.push(`Loading approvals for user ID: ${currentUser.id}, role: ${currentUser.role}`);
+          
           const approvals = await getPendingApprovals(currentUser.id);
+          debugMessages.push(`Found ${approvals.length} pending approvals`);
+          
+          if (approvals.length === 0) {
+            debugMessages.push("No pending approvals found. This could mean:");
+            debugMessages.push("- No requests have been submitted that require your approval");
+            debugMessages.push("- Requests are in a different status than expected");
+            debugMessages.push("- There might be an issue with the approval chain");
+          } else {
+            approvals.forEach(req => {
+              debugMessages.push(`Request #${req.request_id}: Status = ${req.current_status}`);
+            });
+          }
+          
           setPendingApprovals(approvals);
+          setDebugInfo(debugMessages);
         }
       } catch (error) {
         console.error("Failed to load pending approvals:", error);
+        setDebugInfo(prev => [...prev, `Error: ${error instanceof Error ? error.message : String(error)}`]);
       } finally {
         setIsLoading(false);
       }
@@ -53,20 +73,42 @@ const ApprovalsPage = () => {
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       ) : pendingApprovals.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="flex flex-col items-center justify-center text-center py-10">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
-              <p className="text-gray-500 mb-6 max-w-md">
-                You have no pending approvals at this time. Check back later for new travel requests.
-              </p>
-              <Button asChild>
-                <Link to="/">Return to Dashboard</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6 pb-6">
+              <div className="flex flex-col items-center justify-center text-center py-10">
+                <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
+                <p className="text-gray-500 mb-6 max-w-md">
+                  You have no pending approvals at this time. Check back later for new travel requests.
+                </p>
+                <Button asChild>
+                  <Link to="/">Return to Dashboard</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Debug info card */}
+          <Card className="border-dashed border-amber-300">
+            <CardHeader>
+              <CardTitle className="text-amber-600">Troubleshooting Information</CardTitle>
+              <CardDescription>
+                Details to help understand why no approvals are showing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm font-mono bg-gray-50 p-4 rounded-md">
+                {debugInfo.map((message, index) => (
+                  <div key={index} className="flex">
+                    <span className="text-gray-500 mr-2">{index + 1}.</span>
+                    <span>{message}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="space-y-6">
           <Card>
@@ -102,7 +144,31 @@ const ApprovalsPage = () => {
                     return (
                       <TableRow key={request.request_id}>
                         <TableCell className="font-medium">
-                          #{request.request_id}
+                          <div className="flex items-center gap-1">
+                            #{request.request_id}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-4 w-4 text-gray-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs">
+                                    <strong>Approval chain:</strong>
+                                    <ul className="mt-1 list-disc pl-4">
+                                      {request.approval_chain.map((step, i) => (
+                                        <li key={i}>
+                                          {step.role === "manager" ? "Manager" : 
+                                            step.role === "du_head" ? "Department Head" : 
+                                            step.role === "admin" ? "Admin" : step.role}
+                                          : User #{step.user_id}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </TableCell>
                         <TableCell>{request.requester_id}</TableCell>
                         <TableCell>{request.travel_details.destination}</TableCell>

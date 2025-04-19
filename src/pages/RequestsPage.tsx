@@ -17,9 +17,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Filter, Search } from "lucide-react";
+import { Loader2, Plus, Search, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RequestsPage = () => {
   const { currentUser } = useAuth();
@@ -38,6 +39,7 @@ const RequestsPage = () => {
       if (currentUser) {
         try {
           const userRequests = await getUserRequests(currentUser.id);
+          console.log("Loaded user requests:", userRequests);
           setRequests(userRequests);
         } catch (error) {
           console.error("Error loading requests:", error);
@@ -156,9 +158,33 @@ const RequestsPage = () => {
                           {request.travel_details.purpose}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColorClass(request.current_status)}>
-                            {getStatusLabel(request.current_status)}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge className={getStatusColorClass(request.current_status)}>
+                              {getStatusLabel(request.current_status)}
+                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-4 w-4 text-gray-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs">
+                                    <strong>Approval chain:</strong>
+                                    <ul className="mt-1 list-disc pl-4">
+                                      {request.approval_chain.map((step, i) => (
+                                        <li key={i}>
+                                          {step.role === "manager" ? "Manager" : 
+                                            step.role === "du_head" ? "Department Head" : 
+                                            step.role === "admin" ? "Admin" : step.role}
+                                          : User #{step.user_id}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {formatDate(request.created_at)}
