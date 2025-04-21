@@ -28,7 +28,9 @@ const formSchema = z.object({
   end_date: z.date({ required_error: "End date is required" }),
   purpose: z.string().min(10, { message: "Please provide a detailed purpose (min 10 characters)" }),
   project_code: z.string().optional(),
-  estimated_cost: z.string().optional().transform(val => (val === "" ? undefined : parseFloat(val))),
+  // Change here: Transform string to number for estimated_cost
+  estimated_cost: z.string().optional()
+    .transform(val => (val === "" ? undefined : val)),
   additional_notes: z.string().optional(),
 });
 
@@ -96,7 +98,7 @@ const RequestEditPage = () => {
     if (!requestData || !currentUser) return;
     
     try {
-      // Prepare updated request - ensure estimated_cost is properly converted to number
+      // Prepare updated request
       const updatedRequest: TravelRequest = {
         ...requestData,
         travel_details: {
@@ -107,8 +109,8 @@ const RequestEditPage = () => {
           end_date: values.end_date.toISOString(),
           purpose: values.purpose,
           project_code: values.project_code,
-          // Here's the fix: Make sure estimated_cost is properly converted to number or undefined
-          estimated_cost: values.estimated_cost ? parseFloat(values.estimated_cost) : undefined,
+          // Fix: Convert the string value to number or undefined
+          estimated_cost: values.estimated_cost ? Number(values.estimated_cost) : undefined,
           additional_notes: values.additional_notes,
         },
       };
