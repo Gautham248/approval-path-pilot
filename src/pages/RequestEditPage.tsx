@@ -96,7 +96,7 @@ const RequestEditPage = () => {
     if (!requestData || !currentUser) return;
     
     try {
-      // Prepare updated request
+      // Prepare updated request - ensure estimated_cost is properly converted to number
       const updatedRequest: TravelRequest = {
         ...requestData,
         travel_details: {
@@ -107,7 +107,8 @@ const RequestEditPage = () => {
           end_date: values.end_date.toISOString(),
           purpose: values.purpose,
           project_code: values.project_code,
-          estimated_cost: values.estimated_cost as number | undefined,
+          // Here's the fix: Make sure estimated_cost is properly converted to number or undefined
+          estimated_cost: values.estimated_cost ? parseFloat(values.estimated_cost) : undefined,
           additional_notes: values.additional_notes,
         },
       };
