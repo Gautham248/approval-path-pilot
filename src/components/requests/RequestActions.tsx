@@ -12,7 +12,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Pencil
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -74,6 +75,24 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     }
   };
 
+  // Function to determine if user can edit the request
+  const canEditRequest = () => {
+    if (!currentUser) return false;
+    
+    // The requester can always edit their request
+    if (currentUser.id === request.requester_id) return true;
+    
+    // Admins can edit any request
+    if (currentUser.role === "admin") return true;
+    
+    // Managers and DU heads can edit requests in certain statuses
+    if (["manager", "du_head"].includes(currentUser.role)) {
+      return true;
+    }
+    
+    return false;
+  };
+
   if (!request) return null;
 
   // Show different actions based on request status and user permissions
@@ -84,23 +103,36 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     if (current_status === "draft" && currentUser?.id === request.requester_id) {
       return (
         <div className="flex flex-col space-y-4">
-          <Button 
-            onClick={handleSubmitRequest}
-            disabled={isLoading}
-            className="w-full md:w-auto"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <SendHorizontal className="mr-2 h-4 w-4" />
-                Submit for Approval
-              </>
-            )}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button 
+              onClick={handleSubmitRequest}
+              disabled={isLoading}
+              className="w-full md:w-auto"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <SendHorizontal className="mr-2 h-4 w-4" />
+                  Submit for Approval
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              asChild
+              className="w-full md:w-auto"
+            >
+              <Link to={`/requests/${request.request_id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Request
+              </Link>
+            </Button>
+          </div>
           <p className="text-sm text-gray-500">
             Submit this request to start the approval workflow. You won't be able to edit it after submission.
           </p>
@@ -114,15 +146,30 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
       if (canTakeAction) {
         return (
           <div className="flex flex-col space-y-4">
-            <Button 
-              asChild
-              className="w-full md:w-auto"
-            >
-              <Link to={`/requests/${request.request_id}/review`}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Review This Request
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                asChild
+                className="w-full md:w-auto"
+              >
+                <Link to={`/requests/${request.request_id}/review`}>
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Review This Request
+                </Link>
+              </Button>
+              
+              {canEditRequest() && (
+                <Button 
+                  variant="outline" 
+                  asChild
+                  className="w-full md:w-auto"
+                >
+                  <Link to={`/requests/${request.request_id}/edit`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Request
+                  </Link>
+                </Button>
+              )}
+            </div>
             <p className="text-sm text-gray-500">
               You can approve, reject, or return this request for changes.
             </p>
@@ -141,6 +188,19 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
                 The request is currently being reviewed by the appropriate approvers.
               </p>
             </div>
+            
+            {canEditRequest() && (
+              <Button 
+                variant="outline" 
+                asChild
+                className="w-full md:w-auto"
+              >
+                <Link to={`/requests/${request.request_id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Request
+                </Link>
+              </Button>
+            )}
           </div>
         );
       }
@@ -159,6 +219,19 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
               Your travel request has been fully approved and will be processed.
             </p>
           </div>
+          
+          {canEditRequest() && (
+            <Button 
+              variant="outline" 
+              asChild
+              className="w-full md:w-auto"
+            >
+              <Link to={`/requests/${request.request_id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Request
+              </Link>
+            </Button>
+          )}
         </div>
       );
     }
@@ -176,6 +249,19 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
               Unfortunately, your travel request has been rejected. Please check the comments for more information.
             </p>
           </div>
+          
+          {canEditRequest() && (
+            <Button 
+              variant="outline" 
+              asChild
+              className="w-full md:w-auto"
+            >
+              <Link to={`/requests/${request.request_id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Request
+              </Link>
+            </Button>
+          )}
         </div>
       );
     }
@@ -192,6 +278,19 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
             There are no actions available for this request at this time.
           </p>
         </div>
+        
+        {canEditRequest() && (
+          <Button 
+            variant="outline" 
+            asChild
+            className="w-full md:w-auto"
+          >
+            <Link to={`/requests/${request.request_id}/edit`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Request
+            </Link>
+          </Button>
+        )}
       </div>
     );
   };
