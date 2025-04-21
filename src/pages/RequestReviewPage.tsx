@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -52,49 +53,66 @@ const RequestReviewPage = () => {
   const [decision, setDecision] = useState<"approve" | "reject" | "return" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAllowed, setIsAllowed] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRequestData = async () => {
       setIsLoading(true);
+      setLoadingError(null);
+      
       try {
-        if (requestId && currentUser) {
-          const canAct = await canUserActOnRequest(currentUser.id, requestId);
-          setIsAllowed(canAct);
-          
-          if (!canAct) {
-            toast({
-              title: "Unauthorized",
-              description: "You don't have permission to review this request",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          const requestData = await getRequestById(requestId);
-          
-          if (requestData) {
-            setRequest(requestData);
-            
-            const requesterData = await getUserById(requestData.requester_id);
-            if (requesterData) {
-              setRequester(requesterData);
-            }
-            
-            const tickets = await getTicketOptions(requestId);
-            setTicketOptions(tickets);
-            
-            if (requestData.selected_ticket_id) {
-              setSelectedTicketId(requestData.selected_ticket_id);
-            }
-          }
+        if (!requestId || isNaN(requestId)) {
+          setLoadingError("Invalid request ID");
+          setIsLoading(false);
+          return;
         }
+        
+        if (!currentUser) {
+          setLoadingError("User not authenticated");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log(`Checking if user ${currentUser.id} can act on request ${requestId}`);
+        
+        // First load the request to get basic information
+        const requestData = await getRequestById(requestId);
+        if (!requestData) {
+          setLoadingError("Request not found");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Store the request data first so we have something to display
+        setRequest(requestData);
+        
+        // Now check permissions
+        const canAct = await canUserActOnRequest(currentUser.id, requestId);
+        console.log(`Can user act on request: ${canAct}`);
+        setIsAllowed(canAct);
+        
+        if (!canAct) {
+          setLoadingError("You don't have permission to review this request");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Load additional data
+        const requesterData = await getUserById(requestData.requester_id);
+        if (requesterData) {
+          setRequester(requesterData);
+        }
+        
+        const tickets = await getTicketOptions(requestId);
+        setTicketOptions(tickets);
+        
+        if (requestData.selected_ticket_id) {
+          setSelectedTicketId(requestData.selected_ticket_id);
+        }
+        
       } catch (error) {
         console.error("Error loading request data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load request details",
-          variant: "destructive",
-        });
+        setLoadingError("Failed to load request details");
       } finally {
         setIsLoading(false);
       }
@@ -152,13 +170,18 @@ const RequestReviewPage = () => {
     );
   }
 
-  if (!request || !isAllowed) {
+  if (loadingError || !request || !isAllowed) {
     return (
-      <PageLayout title="Access Denied" subtitle="You don't have permission to review this request">
+      <PageLayout 
+        title="Access Denied" 
+        subtitle={loadingError || "You don't have permission to review this request"}
+      >
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">You don't have permission to review this request or the request doesn't exist.</p>
+          <p className="text-gray-500 mb-6">
+            {loadingError || "You don't have permission to review this request or the request doesn't exist."}
+          </p>
           <Button asChild>
             <Link to="/requests">Back to Requests</Link>
           </Button>

@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -13,16 +13,24 @@ const AuthGuard = ({ children, allowedRoles }: AuthGuardProps) => {
   const { currentUser, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  
   useEffect(() => {
     if (!loading) {
       if (!currentUser) {
         // Redirect to login if not authenticated
         navigate("/login", { state: { from: location } });
-      } else if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-        // Redirect to unauthorized page if role is not allowed
-        navigate("/unauthorized");
+        return;
       }
+      
+      // If there are allowed roles and the user's role is not included
+      if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+        // Redirect to unauthorized page
+        navigate("/unauthorized");
+        return;
+      }
+      
+      setIsAuthorized(true);
     }
   }, [currentUser, loading, navigate, location, allowedRoles]);
 
@@ -35,21 +43,8 @@ const AuthGuard = ({ children, allowedRoles }: AuthGuardProps) => {
     );
   }
 
-  // If there are allowed roles and the user's role is not included, don't render children
-  if (
-    allowedRoles &&
-    currentUser &&
-    !allowedRoles.includes(currentUser.role)
-  ) {
-    return null;
-  }
-
-  // If not authenticated, don't render children
-  if (!currentUser) {
-    return null;
-  }
-
-  return <>{children}</>;
+  // Only render children if authorized
+  return isAuthorized ? <>{children}</> : null;
 };
 
 export default AuthGuard;
