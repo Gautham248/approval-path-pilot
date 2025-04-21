@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2, Clock, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 const ApprovalsPage = () => {
   const { currentUser } = useAuth();
@@ -85,6 +86,7 @@ const ApprovalsPage = () => {
   }, [currentUser, getPendingApprovals, getCurrentRequests, refreshCounter]);
 
   const handleRefresh = () => {
+    toast.info("Refreshing approvals...");
     setRefreshCounter(prev => prev + 1);
   };
 

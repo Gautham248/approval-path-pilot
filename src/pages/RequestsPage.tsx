@@ -21,6 +21,7 @@ import { Loader2, Plus, Search, Info, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 const RequestsPage = () => {
   const { currentUser } = useAuth();
@@ -44,6 +45,7 @@ const RequestsPage = () => {
           setRequests(userRequests);
         } catch (error) {
           console.error("Error loading requests:", error);
+          toast.error("Failed to load requests");
         } finally {
           setIsLoading(false);
         }
@@ -59,6 +61,7 @@ const RequestsPage = () => {
   };
 
   const handleRefresh = () => {
+    toast.info("Refreshing requests...");
     setRefreshCounter(prev => prev + 1);
   };
 

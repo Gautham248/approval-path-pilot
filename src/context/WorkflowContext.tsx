@@ -55,7 +55,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   const { currentUser, getUserById } = useAuth();
   const { toast } = useToast();
   
-  // Get all requests for a specific user
   const getUserRequests = async (userId: number): Promise<TravelRequest[]> => {
     try {
       return await queryByIndex<TravelRequest>("requests", "requester_id", userId);
@@ -65,7 +64,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get a specific request by ID
   const getRequestById = async (requestId: number): Promise<TravelRequest | null> => {
     try {
       return await getItemById<TravelRequest>("requests", requestId);
@@ -75,7 +73,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Create a new travel request
   const createRequest = async (request: Omit<TravelRequest, "request_id" | "created_at" | "updated_at" | "current_status" | "version_history">): Promise<number> => {
     try {
       const now = new Date().toISOString();
@@ -96,7 +93,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       const requestId = await addItem<Omit<TravelRequest, "request_id">>("requests", newRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId as number,
         user_id: request.requester_id,
@@ -114,7 +110,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Update an existing travel request
   const updateRequest = async (request: TravelRequest): Promise<void> => {
     try {
       const existingRequest = await getItemById<TravelRequest>("requests", request.request_id);
@@ -126,7 +121,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date().toISOString();
       const userId = currentUser?.id || request.requester_id;
       
-      // Create a new version history entry
       const updatedRequest: TravelRequest = {
         ...request,
         updated_at: now,
@@ -142,7 +136,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: request.request_id,
         user_id: userId,
@@ -159,7 +152,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Submit a request for approval
   const submitRequest = async (requestId: number): Promise<void> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -175,7 +167,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date().toISOString();
       const userId = currentUser?.id || request.requester_id;
       
-      // Update status to manager_pending
       const updatedRequest: TravelRequest = {
         ...request,
         current_status: "manager_pending",
@@ -192,7 +183,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId,
         user_id: userId,
@@ -203,7 +193,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
       
-      // Create notification for the next approver
       if (request.approval_chain.length > 0) {
         const nextApprover = request.approval_chain[0];
         console.log("Notifying approver:", nextApprover);
@@ -222,7 +211,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get all requests pending approval for a specific approver
   const getPendingApprovals = async (approverId: number): Promise<TravelRequest[]> => {
     try {
       console.log(`Getting pending approvals for user ${approverId}`);
@@ -237,48 +225,36 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       console.log(`User role: ${user.role}, ID: ${approverId}`);
       
-      // Filter requests that this user should see based on role and status
       const pendingRequests = allRequests.filter(request => {
-        // Debug info for each request
         console.log(`Checking request #${request.request_id}, status: ${request.current_status}, requester: ${request.requester_id}`);
         console.log(`Approval chain:`, JSON.stringify(request.approval_chain));
         
-        // Skip drafts or completed requests
-        if (request.current_status === "draft" || 
-            request.current_status === "approved" || 
-            request.current_status === "rejected") {
+        if (request.current_status === "draft") {
           return false;
         }
         
-        // For manager pending requests, check if this manager should approve it
+        if (request.current_status === "approved" || request.current_status === "rejected") {
+          return false;
+        }
+        
         if (request.current_status === "manager_pending" && user.role === "manager") {
-          const managerStep = request.approval_chain.find(step => step.role === "manager");
-          const shouldApprove = !managerStep || managerStep.user_id === approverId;
-          console.log(`Manager check: User #${approverId} should${shouldApprove ? '' : ' not'} approve this request`);
-          return shouldApprove;
+          return true;
         }
         
-        // For department pending requests
         if (request.current_status === "du_pending" && user.role === "du_head") {
-          const duHeadStep = request.approval_chain.find(step => step.role === "du_head");
-          return !duHeadStep || duHeadStep.user_id === approverId;
+          return true;
         }
         
-        // For admin pending requests
         if (request.current_status === "admin_pending" && user.role === "admin") {
-          return true; // Any admin can see admin pending requests
+          return true;
         }
         
-        // For manager ticket selection
         if (request.current_status === "manager_selection" && user.role === "manager") {
-          const managerStep = request.approval_chain.find(step => step.role === "manager");
-          return managerStep?.user_id === approverId;
+          return true;
         }
         
-        // For final department head approval
         if (request.current_status === "du_final" && user.role === "du_head") {
-          const duHeadStep = request.approval_chain.find(step => step.role === "du_head");
-          return duHeadStep?.user_id === approverId;
+          return true;
         }
         
         return false;
@@ -292,7 +268,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Approve a request
   const approveRequest = async (requestId: number, approverId: number, comments?: string): Promise<void> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -304,7 +279,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date().toISOString();
       let newStatus: RequestStatus = request.current_status;
       
-      // Determine the next status based on current status
       switch (request.current_status) {
         case "manager_pending":
           newStatus = "du_pending";
@@ -325,7 +299,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(`Invalid current status: ${request.current_status}`);
       }
       
-      // Create an approval record
       const approval: Omit<Approval, "approval_id"> = {
         request_id: requestId,
         approver_id: approverId,
@@ -336,7 +309,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await addItem("approvals", approval);
       
-      // Update the request status
       const updatedRequest: TravelRequest = {
         ...request,
         current_status: newStatus,
@@ -357,7 +329,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId,
         user_id: approverId,
@@ -368,9 +339,7 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
       
-      // Create notification for the next approver or requester
       if (newStatus === "approved") {
-        // Notify requester that request is approved
         createNotification({
           user_id: request.requester_id,
           title: "Travel Request Approved",
@@ -379,7 +348,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           type: "state_change"
         });
       } else {
-        // Find the next approver based on the new status
         const nextApprover = await getNextApprover(updatedRequest);
         if (nextApprover) {
           createNotification({
@@ -398,7 +366,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Reject a request
   const rejectRequest = async (requestId: number, approverId: number, comments?: string): Promise<void> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -409,7 +376,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       const now = new Date().toISOString();
       
-      // Create a rejection record
       const rejection: Omit<Approval, "approval_id"> = {
         request_id: requestId,
         approver_id: approverId,
@@ -420,7 +386,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await addItem("approvals", rejection);
       
-      // Update the request status
       const updatedRequest: TravelRequest = {
         ...request,
         current_status: "rejected",
@@ -441,7 +406,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId,
         user_id: approverId,
@@ -452,7 +416,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
       
-      // Notify requester that request is rejected
       createNotification({
         user_id: request.requester_id,
         title: "Travel Request Rejected",
@@ -467,7 +430,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Return a request for review
   const returnForReview = async (requestId: number, approverId: number, comments?: string): Promise<void> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -480,7 +442,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       let newStatus: RequestStatus;
       let returnToUserId: number;
       
-      // Determine who to return to based on current status
       switch (request.current_status) {
         case "manager_pending":
           newStatus = "draft";
@@ -506,7 +467,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(`Invalid current status for return: ${request.current_status}`);
       }
       
-      // Create a return record
       const returnAction: Omit<Approval, "approval_id"> = {
         request_id: requestId,
         approver_id: approverId,
@@ -517,7 +477,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await addItem("approvals", returnAction);
       
-      // Update the request status
       const updatedRequest: TravelRequest = {
         ...request,
         current_status: newStatus,
@@ -538,7 +497,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId,
         user_id: approverId,
@@ -549,7 +507,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
       
-      // Notify the user the request is returned to
       createNotification({
         user_id: returnToUserId,
         title: "Travel Request Returned for Review",
@@ -564,7 +521,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get all ticket options for a specific request
   const getTicketOptions = async (requestId: number): Promise<TicketOption[]> => {
     try {
       return await queryByIndex<TicketOption>("ticketOptions", "request_id", requestId);
@@ -574,7 +530,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Add a new ticket option
   const addTicketOption = async (ticketOption: Omit<TicketOption, "option_id" | "added_date">): Promise<number> => {
     try {
       const now = new Date().toISOString();
@@ -593,7 +548,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Select a ticket option for a request
   const selectTicketOption = async (requestId: number, ticketOptionId: number, approverId: number): Promise<void> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -608,7 +562,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       const now = new Date().toISOString();
       
-      // Create an approval record with the selected ticket
       const approval: Omit<Approval, "approval_id"> = {
         request_id: requestId,
         approver_id: approverId,
@@ -619,7 +572,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await addItem("approvals", approval);
       
-      // Update the request status and selected ticket
       const updatedRequest: TravelRequest = {
         ...request,
         current_status: "du_final",
@@ -640,7 +592,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       
       await updateItem("requests", updatedRequest);
       
-      // Log audit entry
       await addAuditLog({
         request_id: requestId,
         user_id: approverId,
@@ -651,7 +602,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
       
-      // Notify the DU head that the request is ready for final approval
       const duHeadId = request.approval_chain.find(step => step.role === "du_head")?.user_id;
       if (duHeadId) {
         createNotification({
@@ -669,7 +619,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get all audit logs for a specific request
   const getRequestAuditLogs = async (requestId: number): Promise<AuditLog[]> => {
     try {
       return await queryByIndex<AuditLog>("auditLog", "request_id", requestId);
@@ -679,7 +628,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Check if a user can act on a request
   const canUserActOnRequest = async (userId: number, requestId: number): Promise<boolean> => {
     try {
       const request = await getItemById<TravelRequest>("requests", requestId);
@@ -688,12 +636,10 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // User is the requester and request is in draft
       if (request.requester_id === userId && request.current_status === "draft") {
         return true;
       }
       
-      // Check if user is the current approver based on role and status
       const user = await getUserById(userId);
       
       if (!user) {
@@ -724,7 +670,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Find the right approver in the chain
       const approverStep = request.approval_chain.find(step => step.role === requiredRole);
       
       return approverStep?.user_id === userId;
@@ -734,7 +679,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get the next approver for a request
   const getNextApprover = async (request: TravelRequest): Promise<User | null> => {
     try {
       let nextApproverRole;
@@ -772,7 +716,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Get all current requests
   const getCurrentRequests = async (): Promise<TravelRequest[]> => {
     try {
       return await getAllItems<TravelRequest>("requests");
@@ -782,7 +725,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Helper function to add an audit log entry
   const addAuditLog = async (log: Omit<AuditLog, "log_id">): Promise<number> => {
     try {
       return await addItem<Omit<AuditLog, "log_id">>("auditLog", log) as number;
@@ -792,13 +734,10 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Helper function to simulate an IP address
   const simulateIPAddress = async (): Promise<string> => {
-    // In a real app, this would be handled by the server
     return `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
   };
   
-  // Helper function to create a notification
   const createNotification = async (notification: {
     user_id: number;
     title: string;
@@ -815,11 +754,8 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         created_at: now
       };
       
-      // In a real app, this would be handled by a notification service
-      // For this demo, we'll log it to the console
       console.log("Notification created:", newNotification);
       
-      // Show toast notification for the current user
       if (currentUser && notification.user_id === currentUser.id) {
         toast({
           title: notification.title,
