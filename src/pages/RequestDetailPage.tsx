@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { useAuth } from "@/context/AuthContext";
 import { TravelRequest, User, TicketOption } from "@/types";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, Clock, User as UserIcon, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, Clock, User as UserIcon, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
 import RequestTimeline from "@/components/requests/RequestTimeline";
 import TicketOptions from "@/components/requests/TicketOptions";
@@ -24,6 +24,7 @@ const RequestDetailPage = () => {
   const [requester, setRequester] = useState<User | null>(null);
   const [ticketOptions, setTicketOptions] = useState<TicketOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRequestData = async () => {
@@ -91,6 +92,13 @@ const RequestDetailPage = () => {
     fetchRequestData();
   }, [requestId, getRequestById, getUserById]);
 
+  // Function to handle edit request button click
+  const handleEditRequest = () => {
+    if (requestId) {
+      navigate(`/requests/${requestId}/edit`);
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout
@@ -131,14 +139,25 @@ const RequestDetailPage = () => {
       subtitle={`Status: ${requestData ? getStatusLabel(requestData.current_status) : "Loading..."}`}
     >
       <div className="space-y-6">
-        {/* Status Badge */}
+        {/* Status Badge and Edit Button */}
         <div className="flex justify-between items-center">
           <Badge className={`${getStatusColorClass(current_status)} text-sm py-1 px-3`}>
             {getStatusLabel(current_status)}
           </Badge>
-          <div className="text-sm text-gray-500">
-            <span className="mr-4">Created: {formatDate(created_at)}</span>
-            <span>Last Updated: {formatDate(updated_at)}</span>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1"
+              onClick={handleEditRequest}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Request
+            </Button>
+            <div className="text-sm text-gray-500">
+              <span className="mr-4">Created: {formatDate(created_at)}</span>
+              <span>Last Updated: {formatDate(updated_at)}</span>
+            </div>
           </div>
         </div>
 

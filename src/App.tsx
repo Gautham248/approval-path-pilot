@@ -17,6 +17,7 @@ import RequestsPage from "./pages/RequestsPage";
 import NewRequestPage from "./pages/NewRequestPage";
 import RequestDetailPage from "./pages/RequestDetailPage";
 import RequestReviewPage from "./pages/RequestReviewPage";
+import RequestEditPage from "./pages/RequestEditPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 
@@ -65,6 +66,11 @@ const App = () => (
               <Route path="/requests/:id/review" element={
                 <AuthGuard>
                   <RequestReviewPage />
+                </AuthGuard>
+              } />
+              <Route path="/requests/:id/edit" element={
+                <AuthGuard>
+                  <RequestEditPage />
                 </AuthGuard>
               } />
               

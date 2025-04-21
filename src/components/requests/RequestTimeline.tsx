@@ -12,12 +12,45 @@ import {
   X,
   TicketCheck
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
 
 interface RequestTimelineProps {
   request: TravelRequest;
 }
 
 const RequestTimeline = ({ request }: RequestTimelineProps) => {
+  const { getUserById } = useAuth();
+  const [userNames, setUserNames] = useState<Record<number, string>>({});
+  
+  useEffect(() => {
+    const fetchUserNames = async () => {
+      if (!request?.version_history) return;
+      
+      const userIds = new Set<number>();
+      request.version_history.forEach(entry => {
+        if (entry.user_id) userIds.add(entry.user_id);
+      });
+      
+      const namesMap: Record<number, string> = {};
+      
+      for (const userId of userIds) {
+        try {
+          const user = await getUserById(userId);
+          if (user) {
+            namesMap[userId] = user.name;
+          }
+        } catch (error) {
+          console.error(`Error fetching user ${userId}:`, error);
+        }
+      }
+      
+      setUserNames(namesMap);
+    };
+    
+    fetchUserNames();
+  }, [request, getUserById]);
+
   if (!request || !request.version_history) return null;
 
   return (
@@ -94,7 +127,11 @@ const RequestTimeline = ({ request }: RequestTimelineProps) => {
                   {entry.user_id && (
                     <div className="flex items-center mt-1 text-sm text-gray-500">
                       <UserCircle className="h-3 w-3 mr-1" />
-                      <span>User #{entry.user_id}</span>
+                      <span>
+                        {userNames[entry.user_id] 
+                          ? userNames[entry.user_id] 
+                          : `User #${entry.user_id}`}
+                      </span>
                     </div>
                   )}
                   

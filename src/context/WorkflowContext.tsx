@@ -121,6 +121,15 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date().toISOString();
       const userId = currentUser?.id || request.requester_id;
       
+      const editor = await getUserById(userId);
+      
+      let editDetails = "Request details updated";
+      
+      if (editor) {
+        const roleName = editor.role.charAt(0).toUpperCase() + editor.role.slice(1);
+        editDetails = `Request updated by ${editor.name} (${roleName})`;
+      }
+      
       const updatedRequest: TravelRequest = {
         ...request,
         updated_at: now,
@@ -129,7 +138,11 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           {
             timestamp: now,
             user_id: userId,
-            changeset: { type: "edit", details: "Request updated" }
+            changeset: { 
+              type: "edit", 
+              details: editDetails,
+              comments: `Modified travel details`
+            }
           }
         ]
       };
