@@ -630,23 +630,30 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   
   const canUserActOnRequest = async (userId: number, requestId: number): Promise<boolean> => {
     try {
+      console.log(`Checking if user ${userId} can act on request ${requestId}`);
+      
       const request = await getItemById<TravelRequest>("requests", requestId);
       
       if (!request) {
+        console.error(`Request ${requestId} not found when checking permissions`);
         return false;
-      }
-      
-      if (request.requester_id === userId && request.current_status === "draft") {
-        return true;
       }
       
       const user = await getUserById(userId);
       
       if (!user) {
+        console.error(`User ${userId} not found when checking permissions`);
         return false;
       }
       
-      let requiredRole;
+      console.log(`Checking permissions for user role: ${user.role}, request status: ${request.current_status}`);
+      
+      if (request.requester_id === userId && request.current_status === "draft") {
+        console.log("User is the requester of a draft request - access granted");
+        return true;
+      }
+      
+      let requiredRole: string | null = null;
       
       switch (request.current_status) {
         case "manager_pending":
@@ -663,16 +670,34 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
           requiredRole = "manager";
           break;
         default:
+          console.log(`Request status ${request.current_status} is not actionable`);
           return false;
       }
       
+      console.log(`Required role for this request: ${requiredRole}, user role: ${user.role}`);
+      
       if (user.role !== requiredRole) {
+        console.log(`User role (${user.role}) doesn't match required role (${requiredRole}) - access denied`);
         return false;
       }
       
-      const approverStep = request.approval_chain.find(step => step.role === requiredRole);
+      if (user.role === "manager" && (request.current_status === "manager_pending" || request.current_status === "manager_selection")) {
+        console.log("Manager can act on manager-pending requests - access granted");
+        return true;
+      }
       
-      return approverStep?.user_id === userId;
+      if (user.role === "du_head" && (request.current_status === "du_pending" || request.current_status === "du_final")) {
+        console.log("DU head can act on DU-pending requests - access granted");
+        return true;
+      }
+      
+      if (user.role === "admin" && request.current_status === "admin_pending") {
+        console.log("Admin can act on admin-pending requests - access granted");
+        return true;
+      }
+      
+      console.log("User doesn't have permission to act on this request - access denied");
+      return false;
     } catch (error) {
       console.error(`Failed to check if user ${userId} can act on request ${requestId}:`, error);
       return false;

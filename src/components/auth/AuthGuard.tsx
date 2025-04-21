@@ -16,22 +16,28 @@ const AuthGuard = ({ children, allowedRoles }: AuthGuardProps) => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   
   useEffect(() => {
-    if (!loading) {
-      if (!currentUser) {
-        // Redirect to login if not authenticated
-        navigate("/login", { state: { from: location } });
-        return;
+    const checkAuthorization = async () => {
+      if (!loading) {
+        if (!currentUser) {
+          // Redirect to login if not authenticated
+          navigate("/login", { state: { from: location } });
+          return;
+        }
+        
+        // If there are allowed roles and the user's role is not included
+        if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
+          console.log(`User role (${currentUser.role}) not in allowed roles: [${allowedRoles.join(", ")}]`);
+          // Redirect to unauthorized page
+          navigate("/unauthorized");
+          return;
+        }
+        
+        // User is authorized for this route
+        setIsAuthorized(true);
       }
-      
-      // If there are allowed roles and the user's role is not included
-      if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-        // Redirect to unauthorized page
-        navigate("/unauthorized");
-        return;
-      }
-      
-      setIsAuthorized(true);
-    }
+    };
+    
+    checkAuthorization();
   }, [currentUser, loading, navigate, location, allowedRoles]);
 
   if (loading) {

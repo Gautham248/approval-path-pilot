@@ -18,7 +18,7 @@ const UnauthorizedPage = () => {
             <Link to="/">Go to Dashboard</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/login">Sign in with a different account</Link>
+            <Link to="/requests">View Requests</Link>
           </Button>
         </div>
       </div>
