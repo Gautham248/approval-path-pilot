@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWorkflow } from "@/context/WorkflowContext";
@@ -29,7 +29,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
   const [canTakeAction, setCanTakeAction] = useState<boolean | null>(null);
 
   // Check if current user can take action on this request
-  useState(() => {
+  useEffect(() => {
     const checkPermissions = async () => {
       if (!currentUser) {
         setCanTakeAction(false);
@@ -46,7 +46,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     };
     
     checkPermissions();
-  });
+  }, [currentUser, request.request_id, canUserActOnRequest]);
 
   const handleSubmitRequest = async () => {
     if (!request || request.current_status !== "draft") return;
@@ -95,6 +95,25 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
 
   if (!request) return null;
 
+  // Create a dedicated edit button if the user can edit
+  const renderEditButton = () => {
+    if (canEditRequest()) {
+      return (
+        <Button 
+          variant="outline" 
+          asChild
+          className="w-full md:w-auto"
+        >
+          <Link to={`/requests/${request.request_id}/edit`}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Request
+          </Link>
+        </Button>
+      );
+    }
+    return null;
+  };
+
   // Show different actions based on request status and user permissions
   const renderActions = () => {
     const { current_status } = request;
@@ -122,16 +141,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
               )}
             </Button>
             
-            <Button 
-              variant="outline" 
-              asChild
-              className="w-full md:w-auto"
-            >
-              <Link to={`/requests/${request.request_id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Request
-              </Link>
-            </Button>
+            {renderEditButton()}
           </div>
           <p className="text-sm text-gray-500">
             Submit this request to start the approval workflow. You won't be able to edit it after submission.
@@ -157,18 +167,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
                 </Link>
               </Button>
               
-              {canEditRequest() && (
-                <Button 
-                  variant="outline" 
-                  asChild
-                  className="w-full md:w-auto"
-                >
-                  <Link to={`/requests/${request.request_id}/edit`}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Request
-                  </Link>
-                </Button>
-              )}
+              {renderEditButton()}
             </div>
             <p className="text-sm text-gray-500">
               You can approve, reject, or return this request for changes.
@@ -189,18 +188,9 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
               </p>
             </div>
             
-            {canEditRequest() && (
-              <Button 
-                variant="outline" 
-                asChild
-                className="w-full md:w-auto mt-3"
-              >
-                <Link to={`/requests/${request.request_id}/edit`}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit Request
-                </Link>
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-3 mt-3">
+              {renderEditButton()}
+            </div>
           </div>
         );
       }
@@ -220,18 +210,9 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
             </p>
           </div>
           
-          {canEditRequest() && (
-            <Button 
-              variant="outline" 
-              asChild
-              className="w-full md:w-auto mt-3"
-            >
-              <Link to={`/requests/${request.request_id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Request
-              </Link>
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-3 mt-3">
+            {renderEditButton()}
+          </div>
         </div>
       );
     }
@@ -250,18 +231,9 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
             </p>
           </div>
           
-          {canEditRequest() && (
-            <Button 
-              variant="outline" 
-              asChild
-              className="w-full md:w-auto mt-3"
-            >
-              <Link to={`/requests/${request.request_id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Request
-              </Link>
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-3 mt-3">
+            {renderEditButton()}
+          </div>
         </div>
       );
     }
@@ -279,18 +251,9 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
           </p>
         </div>
         
-        {canEditRequest() && (
-          <Button 
-            variant="outline" 
-            asChild
-            className="w-full md:w-auto mt-3"
-          >
-            <Link to={`/requests/${request.request_id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Request
-            </Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-3 mt-3">
+          {renderEditButton()}
+        </div>
       </div>
     );
   };
