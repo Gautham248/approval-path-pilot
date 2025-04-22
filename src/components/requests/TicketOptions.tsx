@@ -8,6 +8,7 @@ import { Plane, Clock, Calendar, CheckCircle, DollarSign } from "lucide-react";
 import { useState } from "react";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { toast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TicketOptionsProps {
   options: TicketOption[];
@@ -25,6 +26,7 @@ const TicketOptions = ({
   const [selecting, setSelecting] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(selectedTicketId || null);
   const { selectTicketOption } = useWorkflow();
+  const isMobile = useIsMobile();
 
   if (!options || options.length === 0) {
     return (
@@ -51,8 +53,10 @@ const TicketOptions = ({
         description: "The ticket option has been successfully selected.",
       });
       
-      // In a real app, we would update local state or refresh data here
-      window.location.reload();
+      setSelectedOption(optionId);
+      
+      // We don't need to reload the page since we've updated local state
+      // window.location.reload();
     } catch (error) {
       console.error("Error selecting ticket:", error);
       toast({
@@ -78,11 +82,14 @@ const TicketOptions = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {options.map((option) => (
-          <Card key={option.option_id} className={`border-2 ${
-            selectedTicketId === option.option_id 
-              ? 'border-green-500 bg-green-50' 
-              : 'border-gray-200'
-          }`}>
+          <Card 
+            key={option.option_id} 
+            className={`border-2 ${
+              selectedTicketId === option.option_id || selectedOption === option.option_id
+                ? 'border-green-500 bg-green-50' 
+                : 'border-gray-200'
+            }`}
+          >
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg flex items-center">
@@ -159,10 +166,10 @@ const TicketOptions = ({
                   <Button 
                     onClick={() => handleSelectTicket(option.option_id)}
                     className="w-full mt-2"
-                    disabled={selecting || selectedTicketId === option.option_id}
+                    disabled={selecting || selectedTicketId === option.option_id || selectedOption === option.option_id}
                   >
                     {selecting ? 'Selecting...' : 
-                      selectedTicketId === option.option_id ? 'Selected' : 'Select This Ticket'}
+                      (selectedTicketId === option.option_id || selectedOption === option.option_id) ? 'Selected' : 'Select This Ticket'}
                   </Button>
                 )}
               </div>

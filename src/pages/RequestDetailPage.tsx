@@ -40,47 +40,10 @@ const RequestDetailPage = () => {
           const requesterData = await getUserById(request.requester_id);
           setRequester(requesterData);
           
-          // Fetch ticket options if available
-          // This would be implemented in a real app
-          // For now, we'll use mock data
-          if (request.current_status === "manager_selection") {
-            setTicketOptions([
-              {
-                option_id: 1,
-                request_id: request.request_id,
-                carrier: "Delta Airlines",
-                class: "Economy",
-                price: 450,
-                departure_time: "2023-11-15T08:30:00Z",
-                arrival_time: "2023-11-15T11:45:00Z",
-                validity_start: "2023-11-15T00:00:00Z",
-                validity_end: "2023-11-15T23:59:59Z",
-                added_by_admin_id: 2,
-                added_date: "2023-11-01T14:23:45Z",
-                carrier_rating: 4.2,
-                refundable: true,
-                flight_duration: "3h 15m",
-                stops: 0
-              },
-              {
-                option_id: 2,
-                request_id: request.request_id,
-                carrier: "United Airlines",
-                class: "Economy Plus",
-                price: 520,
-                departure_time: "2023-11-15T10:15:00Z",
-                arrival_time: "2023-11-15T13:20:00Z",
-                validity_start: "2023-11-15T00:00:00Z",
-                validity_end: "2023-11-15T23:59:59Z",
-                added_by_admin_id: 2,
-                added_date: "2023-11-01T14:25:12Z",
-                carrier_rating: 3.8,
-                refundable: false,
-                flight_duration: "3h 05m",
-                stops: 0
-              }
-            ]);
-          }
+          // Fetch ticket options
+          const options = await getTicketOptions(request.request_id);
+          console.log("Fetched ticket options:", options);
+          setTicketOptions(options);
         }
       } catch (error) {
         console.error("Error fetching request data:", error);
@@ -90,7 +53,7 @@ const RequestDetailPage = () => {
     };
 
     fetchRequestData();
-  }, [requestId, getRequestById, getUserById]);
+  }, [requestId, getRequestById, getUserById, getTicketOptions]);
 
   if (loading) {
     return (
@@ -125,6 +88,11 @@ const RequestDetailPage = () => {
   }
 
   const { travel_details, current_status, created_at, updated_at } = requestData;
+  
+  // Determine if ticket options tab should be shown
+  const showTicketsTab = ticketOptions.length > 0 || 
+                       (currentUser?.role === "admin" && current_status === "admin_pending") ||
+                       (currentUser?.role === "manager" && current_status === "manager_selection");
 
   return (
     <PageLayout
@@ -147,7 +115,7 @@ const RequestDetailPage = () => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Request Details</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            {ticketOptions.length > 0 && (
+            {showTicketsTab && (
               <TabsTrigger value="tickets">Ticket Options</TabsTrigger>
             )}
           </TabsList>
@@ -281,7 +249,7 @@ const RequestDetailPage = () => {
             <RequestTimeline request={requestData} />
           </TabsContent>
 
-          {ticketOptions.length > 0 && (
+          {showTicketsTab && (
             <TabsContent value="tickets" className="pt-4">
               <TicketOptions 
                 options={ticketOptions}
@@ -292,6 +260,30 @@ const RequestDetailPage = () => {
                   current_status === "manager_selection"
                 }
               />
+              
+              {/* Navigation button to the review page for managers to confirm selection */}
+              {currentUser?.role === "manager" && current_status === "manager_selection" && (
+                <div className="mt-6">
+                  <Button 
+                    onClick={() => navigate(`/requests/${requestData.request_id}/review`)}
+                    className="w-full"
+                  >
+                    Confirm Selection & Submit Decision
+                  </Button>
+                </div>
+              )}
+              
+              {/* Navigation button to the review page for admins to add ticket options */}
+              {currentUser?.role === "admin" && current_status === "admin_pending" && (
+                <div className="mt-6">
+                  <Button 
+                    onClick={() => navigate(`/requests/${requestData.request_id}/review`)}
+                    className="w-full"
+                  >
+                    Add Ticket Options
+                  </Button>
+                </div>
+              )}
             </TabsContent>
           )}
         </Tabs>
