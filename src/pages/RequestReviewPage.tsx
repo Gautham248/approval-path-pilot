@@ -13,7 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { 
+import { Input } from "@/components/ui/input";
+import {
   AlertCircle, 
   Calendar, 
   Check, 
@@ -23,10 +24,12 @@ import {
   Tag,
   ThumbsDown,
   TicketCheck,
+  TicketPlus,
   SendHorizontal,
   X
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const RequestReviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +44,8 @@ const RequestReviewPage = () => {
     approveRequest,
     rejectRequest,
     returnForReview,
-    selectTicketOption
+    selectTicketOption,
+    addTicketOption
   } = useWorkflow();
   
   const [request, setRequest] = useState<TravelRequest | null>(null);
@@ -54,6 +58,34 @@ const RequestReviewPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAllowed, setIsAllowed] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [isAddingTicket, setIsAddingTicket] = useState(false);
+  
+  // New state for adding ticket options
+  const [newTicket, setNewTicket] = useState<{
+    carrier: string;
+    class: string;
+    price: string;
+    departure_time: string;
+    arrival_time: string;
+    validity_start: string;
+    validity_end: string;
+    flight_duration: string;
+    stops: string;
+    refundable: boolean;
+    carrier_rating: string;
+  }>({
+    carrier: "",
+    class: "Economy",
+    price: "",
+    departure_time: "",
+    arrival_time: "",
+    validity_start: "",
+    validity_end: "",
+    flight_duration: "",
+    stops: "0",
+    refundable: false,
+    carrier_rating: "4.0"
+  });
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -159,6 +191,79 @@ const RequestReviewPage = () => {
       setIsSubmitting(false);
     }
   };
+  
+  const handleAddTicket = async () => {
+    if (!request || !currentUser) return;
+    
+    try {
+      setIsAddingTicket(true);
+      
+      // Convert the price, stops, and rating to numbers
+      const price = parseFloat(newTicket.price);
+      const stops = parseInt(newTicket.stops, 10);
+      const carrier_rating = parseFloat(newTicket.carrier_rating);
+      
+      if (isNaN(price) || price <= 0) {
+        toast({
+          title: "Invalid Price",
+          description: "Please enter a valid price",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const ticketOption: Omit<TicketOption, "option_id" | "added_date"> = {
+        request_id: requestId,
+        carrier: newTicket.carrier,
+        class: newTicket.class,
+        price: price,
+        departure_time: newTicket.departure_time,
+        arrival_time: newTicket.arrival_time,
+        validity_start: newTicket.validity_start,
+        validity_end: newTicket.validity_end,
+        flight_duration: newTicket.flight_duration,
+        stops: stops,
+        refundable: newTicket.refundable,
+        carrier_rating: carrier_rating,
+        added_by_admin_id: currentUser.id
+      };
+      
+      const ticketId = await addTicketOption(ticketOption);
+      
+      // Add the new ticket to the list
+      setTicketOptions(prev => [...prev, {...ticketOption, option_id: ticketId, added_date: new Date().toISOString()}]);
+      
+      toast({
+        title: "Ticket Option Added",
+        description: "The ticket option has been added successfully",
+      });
+      
+      // Reset the form
+      setNewTicket({
+        carrier: "",
+        class: "Economy",
+        price: "",
+        departure_time: "",
+        arrival_time: "",
+        validity_start: "",
+        validity_end: "",
+        flight_duration: "",
+        stops: "0",
+        refundable: false,
+        carrier_rating: "4.0"
+      });
+      
+    } catch (error) {
+      console.error("Error adding ticket option:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add ticket option",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingTicket(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -194,6 +299,10 @@ const RequestReviewPage = () => {
   const isDUReview = request.current_status === "du_pending" || request.current_status === "du_final";
   const isAdminReview = request.current_status === "admin_pending";
   const isTicketSelection = request.current_status === "manager_selection";
+  const isAdminUser = currentUser?.role === "admin";
+  
+  // Determine if the current user is allowed to add ticket options
+  const canAddTickets = isAdminUser && (isAdminReview || request.current_status === "manager_selection");
 
   let stepTitle = "Review Request";
   if (isManagerReview) stepTitle = "Manager Review";
@@ -294,6 +403,7 @@ const RequestReviewPage = () => {
             </CardContent>
           </Card>
 
+          {/* Ticket Options Card */}
           {isTicketSelection && ticketOptions.length > 0 && (
             <Card>
               <CardHeader>
@@ -368,6 +478,170 @@ const RequestReviewPage = () => {
                     ))}
                   </div>
                 </RadioGroup>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Card for adding ticket options (for Admins only) */}
+          {canAddTickets && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TicketPlus className="mr-2 h-5 w-5" />
+                  Add Ticket Option
+                </CardTitle>
+                <CardDescription>
+                  Add ticket options for the manager to select from
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="carrier">Carrier</Label>
+                    <Input
+                      id="carrier"
+                      placeholder="Airline Name"
+                      value={newTicket.carrier}
+                      onChange={(e) => setNewTicket({...newTicket, carrier: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="class">Class</Label>
+                    <Select 
+                      value={newTicket.class} 
+                      onValueChange={(value) => setNewTicket({...newTicket, class: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Economy">Economy</SelectItem>
+                        <SelectItem value="Economy Plus">Economy Plus</SelectItem>
+                        <SelectItem value="Business">Business</SelectItem>
+                        <SelectItem value="First">First</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price (USD)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      placeholder="Price"
+                      value={newTicket.price}
+                      min="0"
+                      step="0.01"
+                      onChange={(e) => setNewTicket({...newTicket, price: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="departure">Departure Time</Label>
+                    <Input
+                      id="departure"
+                      type="datetime-local"
+                      value={newTicket.departure_time}
+                      onChange={(e) => setNewTicket({...newTicket, departure_time: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="arrival">Arrival Time</Label>
+                    <Input
+                      id="arrival"
+                      type="datetime-local"
+                      value={newTicket.arrival_time}
+                      onChange={(e) => setNewTicket({...newTicket, arrival_time: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">Flight Duration</Label>
+                    <Input
+                      id="duration"
+                      placeholder="e.g. 2h 35m"
+                      value={newTicket.flight_duration}
+                      onChange={(e) => setNewTicket({...newTicket, flight_duration: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="validFrom">Valid From</Label>
+                    <Input
+                      id="validFrom"
+                      type="date"
+                      value={newTicket.validity_start}
+                      onChange={(e) => setNewTicket({...newTicket, validity_start: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="validTo">Valid Until</Label>
+                    <Input
+                      id="validTo"
+                      type="date"
+                      value={newTicket.validity_end}
+                      onChange={(e) => setNewTicket({...newTicket, validity_end: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="stops">Number of Stops</Label>
+                    <Input
+                      id="stops"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={newTicket.stops}
+                      onChange={(e) => setNewTicket({...newTicket, stops: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="rating">Carrier Rating</Label>
+                    <Input
+                      id="rating"
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="0.1"
+                      placeholder="4.0"
+                      value={newTicket.carrier_rating}
+                      onChange={(e) => setNewTicket({...newTicket, carrier_rating: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 pt-6">
+                    <input 
+                      type="checkbox" 
+                      id="refundable" 
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                      checked={newTicket.refundable}
+                      onChange={(e) => setNewTicket({...newTicket, refundable: e.target.checked})}
+                    />
+                    <Label htmlFor="refundable">Refundable Ticket</Label>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={handleAddTicket} 
+                  disabled={isAddingTicket || !newTicket.carrier || !newTicket.price}
+                  className="w-full mt-4"
+                >
+                  {isAddingTicket ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding Ticket...
+                    </>
+                  ) : (
+                    <>
+                      <TicketPlus className="mr-2 h-4 w-4" />
+                      Add Ticket Option
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           )}

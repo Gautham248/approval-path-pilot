@@ -85,7 +85,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     // Admins can edit any request
     if (currentUser.role === "admin") return true;
     
-    // Managers and DU heads can edit requests in any status
+    // Managers and DU heads can always edit requests
     if (["manager", "du_head"].includes(currentUser.role)) {
       return true;
     }
