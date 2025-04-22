@@ -79,13 +79,13 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
   const canEditRequest = () => {
     if (!currentUser) return false;
     
-    // The requester can always edit their request
-    if (currentUser.id === request.requester_id) return true;
+    // The requester can always edit their draft requests
+    if (currentUser.id === request.requester_id && request.current_status === "draft") return true;
     
     // Admins can edit any request
     if (currentUser.role === "admin") return true;
     
-    // Managers and DU heads can edit requests in certain statuses
+    // Managers and DU heads can edit requests in any status
     if (["manager", "du_head"].includes(currentUser.role)) {
       return true;
     }
@@ -193,7 +193,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
               <Button 
                 variant="outline" 
                 asChild
-                className="w-full md:w-auto"
+                className="w-full md:w-auto mt-3"
               >
                 <Link to={`/requests/${request.request_id}/edit`}>
                   <Pencil className="mr-2 h-4 w-4" />
@@ -224,7 +224,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
             <Button 
               variant="outline" 
               asChild
-              className="w-full md:w-auto"
+              className="w-full md:w-auto mt-3"
             >
               <Link to={`/requests/${request.request_id}/edit`}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -254,7 +254,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
             <Button 
               variant="outline" 
               asChild
-              className="w-full md:w-auto"
+              className="w-full md:w-auto mt-3"
             >
               <Link to={`/requests/${request.request_id}/edit`}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -283,7 +283,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
           <Button 
             variant="outline" 
             asChild
-            className="w-full md:w-auto"
+            className="w-full md:w-auto mt-3"
           >
             <Link to={`/requests/${request.request_id}/edit`}>
               <Pencil className="mr-2 h-4 w-4" />

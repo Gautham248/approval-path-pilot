@@ -16,7 +16,7 @@ const Header = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
               <Plane className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-semibold text-gray-900">TravelFlow</span>
+              <span className="ml-2 text-xl font-semibold text-gray-900">Xpress</span>
             </Link>
           </div>
 
