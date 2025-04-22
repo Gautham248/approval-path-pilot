@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { RequestStatus, UserRole } from "@/types";
 
@@ -35,6 +34,8 @@ export const getStatusColorClass = (status: RequestStatus): string => {
       return "bg-green-100 text-green-800 hover:bg-green-200";
     case "rejected":
       return "bg-red-100 text-red-800 hover:bg-red-200";
+    case "closed":
+      return "bg-slate-100 text-slate-800 hover:bg-slate-200";
     default:
       return "bg-gray-100 text-gray-800 hover:bg-gray-200";
   }
@@ -59,8 +60,9 @@ export const getStatusLabel = (status: RequestStatus): string => {
       return "Approved";
     case "rejected":
       return "Rejected";
+    case "closed":
+      return "Closed";
     default:
-      // Fix: Explicitly cast status to string to avoid 'never' type inference
       return (status as string).replace(/_/g, " ");
   }
 };
@@ -87,7 +89,6 @@ export const getRoleLabel = (role: UserRole): string => {
     case "du_head":
       return "Department Head";
     default:
-      // Fix: Explicitly cast role to string to avoid 'never' type inference
       const roleAsString = role as string;
       return roleAsString.charAt(0).toUpperCase() + roleAsString.slice(1).replace(/_/g, " ");
   }

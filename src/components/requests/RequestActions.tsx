@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Pencil
+  Pencil,
+  Lock
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -25,10 +25,9 @@ interface RequestActionsProps {
 
 const RequestActions = ({ request, currentUser, onActionComplete }: RequestActionsProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { submitRequest, canUserActOnRequest } = useWorkflow();
+  const { submitRequest, canUserActOnRequest, closeRequest } = useWorkflow();
   const [canTakeAction, setCanTakeAction] = useState<boolean | null>(null);
 
-  // Check if current user can take action on this request
   useEffect(() => {
     const checkPermissions = async () => {
       if (!currentUser) {
@@ -75,17 +74,40 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     }
   };
 
-  // Function to determine if user can edit the request
+  const handleCloseRequest = async () => {
+    if (!currentUser || !request || request.current_status !== "approved") return;
+    
+    setIsLoading(true);
+    try {
+      await closeRequest(request.request_id, currentUser.id);
+      
+      toast({
+        title: "Request Closed",
+        description: "The travel request has been successfully closed.",
+      });
+      
+      if (onActionComplete) {
+        onActionComplete();
+      }
+    } catch (error) {
+      console.error("Error closing request:", error);
+      toast({
+        title: "Action Failed",
+        description: "There was an error closing the request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const canEditRequest = () => {
     if (!currentUser) return false;
     
-    // The requester can always edit their draft requests
     if (currentUser.id === request.requester_id && request.current_status === "draft") return true;
     
-    // Admins can edit any request
     if (currentUser.role === "admin") return true;
     
-    // Managers and DU heads can always edit requests
     if (["manager", "du_head"].includes(currentUser.role)) {
       return true;
     }
@@ -95,7 +117,6 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
 
   if (!request) return null;
 
-  // Create a dedicated edit button if the user can edit
   const renderEditButton = () => {
     if (canEditRequest()) {
       return (
@@ -114,11 +135,9 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
     return null;
   };
 
-  // Show different actions based on request status and user permissions
   const renderActions = () => {
     const { current_status } = request;
     
-    // For draft requests (only requester can submit)
     if (current_status === "draft" && currentUser?.id === request.requester_id) {
       return (
         <div className="flex flex-col space-y-4">
@@ -150,9 +169,7 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
       );
     }
     
-    // For requests pending approval
     if (["manager_pending", "du_pending", "admin_pending", "manager_selection", "du_final"].includes(current_status)) {
-      // Check if current user can take action
       if (canTakeAction) {
         return (
           <div className="flex flex-col space-y-4">
@@ -175,7 +192,6 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
           </div>
         );
       } else {
-        // User can't take action but can view status
         return (
           <div className="flex flex-col space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -196,7 +212,6 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
       }
     }
     
-    // For approved requests
     if (current_status === "approved") {
       return (
         <div className="flex flex-col space-y-4">
@@ -211,23 +226,41 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
           </div>
           
           <div className="flex flex-wrap gap-3 mt-3">
+            {currentUser?.role === "admin" && (
+              <Button 
+                onClick={handleCloseRequest}
+                disabled={isLoading}
+                className="w-full md:w-auto"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Closing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Close Request
+                  </>
+                )}
+              </Button>
+            )}
             {renderEditButton()}
           </div>
         </div>
       );
     }
     
-    // For rejected requests
-    if (current_status === "rejected") {
+    if (current_status === "closed") {
       return (
         <div className="flex flex-col space-y-4">
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-md">
             <div className="flex items-center mb-1">
-              <XCircle className="h-4 w-4 text-red-500 mr-2" />
-              <p className="text-red-700 font-medium">This request has been rejected</p>
+              <Lock className="h-4 w-4 text-slate-500 mr-2" />
+              <p className="text-slate-700 font-medium">This request has been closed</p>
             </div>
             <p className="text-sm text-gray-600">
-              Unfortunately, your travel request has been rejected. Please check the comments for more information.
+              This travel request has been completed and closed by the administrator.
             </p>
           </div>
           
@@ -238,7 +271,6 @@ const RequestActions = ({ request, currentUser, onActionComplete }: RequestActio
       );
     }
     
-    // Default action section
     return (
       <div className="flex flex-col space-y-4">
         <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">

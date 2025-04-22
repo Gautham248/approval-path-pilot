@@ -47,6 +47,9 @@ interface WorkflowContextType {
   
   // User data
   getUserById: (userId: number) => Promise<User | null>;
+  
+  // Close Request
+  closeRequest: (requestId: number, adminId: number, comments?: string) => Promise<void>;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -805,6 +808,64 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
+  const closeRequest = async (requestId: number, adminId: number, comments?: string): Promise<void> => {
+    try {
+      const request = await getItemById<TravelRequest>("requests", requestId);
+      
+      if (!request) {
+        throw new Error(`Request ${requestId} not found`);
+      }
+      
+      if (request.current_status !== "approved") {
+        throw new Error(`Request ${requestId} must be approved before closing`);
+      }
+      
+      const now = new Date().toISOString();
+      
+      const updatedRequest: TravelRequest = {
+        ...request,
+        current_status: "closed",
+        updated_at: now,
+        version_history: [
+          ...request.version_history,
+          {
+            timestamp: now,
+            user_id: adminId,
+            changeset: { 
+              type: "close", 
+              details: `Request closed by administrator`,
+              comments
+            }
+          }
+        ]
+      };
+      
+      await updateItem("requests", updatedRequest);
+      
+      await addAuditLog({
+        request_id: requestId,
+        user_id: adminId,
+        action_type: "edit",
+        before_state: { status: request.current_status },
+        after_state: { status: "closed" },
+        ip_address: await simulateIPAddress(),
+        timestamp: now
+      });
+      
+      createNotification({
+        user_id: request.requester_id,
+        title: "Travel Request Closed",
+        message: `Your travel request #${requestId} has been closed by the administrator.`,
+        request_id: requestId,
+        type: "state_change"
+      });
+      
+    } catch (error) {
+      console.error(`Failed to close request ${requestId}:`, error);
+      throw error;
+    }
+  };
+
   return (
     <WorkflowContext.Provider value={{
       getUserRequests,
@@ -828,7 +889,9 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       getNextApprover,
       getCurrentRequests,
       
-      getUserById
+      getUserById,
+      
+      closeRequest
     }}>
       {children}
     </WorkflowContext.Provider>

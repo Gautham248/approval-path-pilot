@@ -1,4 +1,3 @@
-
 // Travel Request Management System Types
 
 // User role types
@@ -13,7 +12,8 @@ export type RequestStatus =
   | "manager_selection" 
   | "du_final" 
   | "approved" 
-  | "rejected";
+  | "rejected"
+  | "closed";
 
 // Approval action types
 export type ApprovalAction = "approved" | "rejected" | "returned" | "edited";
