@@ -3,16 +3,16 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import MobileMenu from "./MobileMenu";
-import NotificationsMenu from "./NotificationsMenu";
-import UserMenu from "./UserMenu";
-import { useMobile } from "@/hooks/use-mobile";
+import { MobileMenu } from "./MobileMenu";
+import { NotificationsMenu } from "./NotificationsMenu";
+import { UserMenu } from "./UserMenu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkflow } from "@/context/WorkflowContext";
 
 const Header = () => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const { getPendingApprovals } = useWorkflow();
   const [pendingCount, setPendingCount] = useState(0);
 

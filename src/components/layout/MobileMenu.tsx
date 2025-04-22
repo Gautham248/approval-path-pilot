@@ -8,7 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { getInitials, getRoleLabel } from "@/lib/utils/formatters";
 
-export const MobileMenu = () => {
+interface MobileMenuProps {
+  pendingCount?: number;
+}
+
+export const MobileMenu = ({ pendingCount }: MobileMenuProps) => {
   const { currentUser, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -45,7 +49,7 @@ export const MobileMenu = () => {
 
           <nav className="flex-1 px-2 py-4 bg-white space-y-1">
             <Link 
-              to="/" 
+              to="/dashboard" 
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100"
               onClick={() => setIsOpen(false)}
             >
@@ -58,22 +62,29 @@ export const MobileMenu = () => {
             >
               Requests
             </Link>
-            {currentUser?.role === "admin" && (
+            {(currentUser.role === "manager" || currentUser.role === "du_head" || currentUser.role === "admin") && (
               <Link 
-                to="/admin" 
+                to="/approvals" 
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100 flex items-center"
+                onClick={() => setIsOpen(false)}
+              >
+                <span>Approvals</span>
+                {pendingCount && pendingCount > 0 && (
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            {(currentUser.role === "manager" || currentUser.role === "du_head" || currentUser.role === "admin") && (
+              <Link 
+                to="/analytics" 
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100"
                 onClick={() => setIsOpen(false)}
               >
-                Admin
+                Analytics
               </Link>
             )}
-            <Link 
-              to="/analytics" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100"
-              onClick={() => setIsOpen(false)}
-            >
-              Analytics
-            </Link>
             <Link 
               to="/profile" 
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100"
