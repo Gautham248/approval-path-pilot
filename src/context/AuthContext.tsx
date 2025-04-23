@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, UserRole } from "@/types";
 import { getUserById, getAllUsers, getUsersByRole } from "@/integrations/supabase/api";
@@ -51,14 +52,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // TODO: replace with real auth - for now, just search for user in supabase
+      // For development purposes, we're using a simplified authentication
+      // In production, this would use proper authentication APIs
+      console.log("Attempting to login with email:", email);
       const users = await getAllUsers();
-      const user = users.find(u => u.email === email);
+      console.log("Found users:", users);
+      
+      // Case-insensitive email comparison
+      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      
       if (user) {
+        console.log("User found:", user);
         setCurrentUser(user);
         localStorage.setItem("currentUserId", String(user.id));
         return true;
       }
+      
+      console.log("No user found with email:", email);
       return false;
     } catch (error) {
       console.error("Login failed:", error);
