@@ -122,7 +122,8 @@ const AnalyticsPage = () => {
     "manager_selection": "#F59E0B",
     "du_final": "#10B981",
     "approved": "#22C55E",
-    "rejected": "#EF4444"
+    "rejected": "#EF4444",
+    "closed": "#94A3B8"  // Adding the 'closed' status with a slate color
   };
 
   return (
