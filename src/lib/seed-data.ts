@@ -1,5 +1,5 @@
 
-import { addItem } from "@/lib/db";
+import { createUser, createRequestApi, addTicketOption } from "@/integrations/supabase/api";
 import { User, TravelRequest, TicketOption, UserRole } from "@/types";
 
 // Seed users for initial testing
@@ -50,7 +50,7 @@ export const seedUsers = async (): Promise<void> => {
   // Add each user to the database
   for (const user of users) {
     try {
-      await addItem("users", user);
+      await createUser(user);
     } catch (error) {
       console.error("Error adding user:", error);
     }
@@ -136,11 +136,15 @@ export const seedTravelRequests = async (): Promise<void> => {
     ];
 
     for (const request of requestsToSeed) {
-      const requestId = await addItem("requests", request);
-      
-      // If a request is in a state where tickets are added
-      if (request.current_status === "manager_selection") {
-        await seedTicketOptions(requestId as number);
+      try {
+        const requestId = await createRequestApi(request);
+        
+        // If a request is in a state where tickets are added
+        if (request.current_status === "manager_selection") {
+          await seedTicketOptions(requestId);
+        }
+      } catch (error) {
+        console.error("Error creating travel request:", error);
       }
     }
 
@@ -156,7 +160,7 @@ export const seedTicketOptions = async (requestId: number): Promise<void> => {
   const oneMonthLater = new Date(currentDate);
   oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
 
-  const ticketsToSeed: Omit<TicketOption, "option_id">[] = [
+  const ticketsToSeed: Omit<TicketOption, "option_id" | "added_date">[] = [
     {
       request_id: requestId,
       carrier: "American Airlines",
@@ -167,7 +171,6 @@ export const seedTicketOptions = async (requestId: number): Promise<void> => {
       validity_start: currentDate.toISOString(),
       validity_end: oneMonthLater.toISOString(),
       added_by_admin_id: 3,
-      added_date: new Date().toISOString(),
       carrier_rating: 4.2,
       refundable: true,
       flight_duration: "3h 30m",
@@ -183,7 +186,6 @@ export const seedTicketOptions = async (requestId: number): Promise<void> => {
       validity_start: currentDate.toISOString(),
       validity_end: oneMonthLater.toISOString(),
       added_by_admin_id: 3,
-      added_date: new Date().toISOString(),
       carrier_rating: 4.5,
       refundable: true,
       flight_duration: "3h 15m",
@@ -199,7 +201,6 @@ export const seedTicketOptions = async (requestId: number): Promise<void> => {
       validity_start: currentDate.toISOString(),
       validity_end: oneMonthLater.toISOString(),
       added_by_admin_id: 3,
-      added_date: new Date().toISOString(),
       carrier_rating: 4.0,
       refundable: false,
       flight_duration: "3h 15m",
@@ -209,7 +210,7 @@ export const seedTicketOptions = async (requestId: number): Promise<void> => {
 
   for (const ticket of ticketsToSeed) {
     try {
-      await addItem("ticketOptions", ticket);
+      await addTicketOption(ticket);
     } catch (error) {
       console.error("Error adding ticket option:", error);
     }

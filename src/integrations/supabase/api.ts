@@ -159,5 +159,8 @@ export async function addNotification(notification: Omit<Notification, "id">): P
 export async function getUserNotifications(userId: number): Promise<Notification[]> {
   const { data, error } = await supabase.from("notifications").select("*").eq("user_id", userId);
   if (error) throw error;
-  return data;
+  return data.map(notification => ({
+    ...notification,
+    type: notification.type as "state_change" | "sla_breach" | "budget_overrun" | "general"
+  }));
 }
