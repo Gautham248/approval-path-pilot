@@ -69,9 +69,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   const { currentUser, getUserById } = useAuth();
   const { toast } = useToast();
 
-  // Replace all direct db functions with calls to Supabase CRUD
-
-  // Example:
   const getUserRequests = async (userId: number) => {
     return await apiGetUserRequests(userId);
   };
@@ -81,7 +78,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createRequest = async (request: Omit<TravelRequest, "request_id" | "created_at" | "updated_at" | "current_status" | "version_history">): Promise<number> => {
-    // Replicate the shape used in db vs app
     const now = new Date().toISOString();
 
     const requestId = await createRequestApi({
@@ -148,12 +144,14 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       if (request.approval_chain.length > 0) {
         const nextApprover = request.approval_chain[0];
         console.log("Notifying approver:", nextApprover);
-        addNotification({
+        await addNotification({
           user_id: nextApprover.user_id,
           title: "New Request Pending Approval",
           message: `Request #${requestId} requires your approval.`,
           request_id: requestId,
-          type: "state_change"
+          type: "state_change",
+          read: false,
+          created_at: now
         });
       }
 
@@ -292,22 +290,26 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (newStatus === "approved") {
-        addNotification({
+        await addNotification({
           user_id: request.requester_id,
           title: "Travel Request Approved",
           message: `Your travel request #${requestId} has been fully approved.`,
           request_id: requestId,
-          type: "state_change"
+          type: "state_change",
+          read: false,
+          created_at: now
         });
       } else {
         const nextApprover = await getNextApprover(updatedRequest);
         if (nextApprover) {
-          addNotification({
+          await addNotification({
             user_id: nextApprover.id,
             title: "Travel Request Pending Your Approval",
             message: `Request #${requestId} requires your approval.`,
             request_id: requestId,
-            type: "state_change"
+            type: "state_change",
+            read: false,
+            created_at: now
           });
         }
       }
@@ -368,12 +370,14 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
 
-      addNotification({
+      await addNotification({
         user_id: request.requester_id,
         title: "Travel Request Rejected",
         message: `Your travel request #${requestId} has been rejected.${comments ? ` Reason: ${comments}` : ''}`,
         request_id: requestId,
-        type: "state_change"
+        type: "state_change",
+        read: false,
+        created_at: now
       });
 
     } catch (error) {
@@ -459,12 +463,14 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
 
-      addNotification({
+      await addNotification({
         user_id: returnToUserId,
         title: "Travel Request Returned for Review",
         message: `Request #${requestId} has been returned to you for review.${comments ? ` Comments: ${comments}` : ''}`,
         request_id: requestId,
-        type: "state_change"
+        type: "state_change",
+        read: false,
+        created_at: now
       });
 
     } catch (error) {
@@ -547,12 +553,14 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
 
       const duHeadId = request.approval_chain.find(step => step.role === "du_head")?.user_id;
       if (duHeadId) {
-        addNotification({
+        await addNotification({
           user_id: duHeadId,
           title: "Travel Request Ready for Final Approval",
           message: `Request #${requestId} has a selected ticket and is ready for your final approval.`,
           request_id: requestId,
-          type: "state_change"
+          type: "state_change",
+          read: false,
+          created_at: now
         });
       }
 
@@ -723,6 +731,8 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       };
 
       console.log("Notification created:", newNotification);
+      
+      await addNotification(newNotification);
 
       if (currentUser && notification.user_id === currentUser.id) {
         toast({
@@ -779,12 +789,14 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
         timestamp: now
       });
 
-      createNotification({
+      await addNotification({
         user_id: request.requester_id,
         title: "Travel Request Closed",
         message: `Your travel request #${requestId} has been closed by the administrator.`,
         request_id: requestId,
-        type: "state_change"
+        type: "state_change",
+        read: false,
+        created_at: now
       });
 
     } catch (error) {
