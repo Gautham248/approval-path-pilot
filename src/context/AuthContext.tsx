@@ -1,8 +1,23 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, UserRole } from "@/types";
-import { getItemById, getAllItems } from "@/lib/db";
-import { seedUsers } from "@/lib/seed-data";
+import { getUserById, getAllUsers, getUsersByRole } from "@/integrations/supabase/api";
+
+// Travel Request Management System Types
+
+// User role types
+// Request status types
+// Approval action types
+// Audit log action types
+
+// User interface
+// Travel details interface
+// Approval chain step interface
+// Version history entry interface
+// Travel request interface
+// Approval interface
+// Ticket option interface
+// Audit log interface
+// Notification interface
 
 interface AuthContextType {
   currentUser: User | null;
@@ -21,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in via localStorage
+    // On mount, check for logged-in user in localStorage
     const checkUserLoggedIn = async () => {
       try {
         await checkAuth();
@@ -31,35 +46,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     };
-
-    // Initialize database with seed data
-    const initializeData = async () => {
-      try {
-        // Check if users exist, if not seed the database
-        const users = await getAllItems<User>("users");
-        if (users.length === 0) {
-          // Seed initial users if the database is empty
-          await seedUsers();
-        }
-      } catch (error) {
-        console.error("Error initializing data:", error);
-      }
-    };
-
-    initializeData();
     checkUserLoggedIn();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // In a real app, this would verify credentials against a backend
-      // For this demo, we'll just fetch users and simulate login
-      const users = await getAllItems<User>("users");
+      // TODO: replace with real auth - for now, just search for user in supabase
+      const users = await getAllUsers();
       const user = users.find(u => u.email === email);
-      
       if (user) {
         setCurrentUser(user);
-        // Store user ID in localStorage (simulating a session)
         localStorage.setItem("currentUserId", String(user.id));
         return true;
       }
@@ -79,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userId = localStorage.getItem("currentUserId");
     if (userId) {
       try {
-        const user = await getItemById<User>("users", parseInt(userId, 10));
+        const user = await getUserById(Number(userId));
         if (user) {
           setCurrentUser(user);
           return true;
@@ -91,34 +87,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const getUserById = async (id: number): Promise<User | null> => {
-    try {
-      return await getItemById<User>("users", id);
-    } catch (error) {
-      console.error(`Failed to get user with ID ${id}:`, error);
-      return null;
-    }
-  };
-
-  const getUsersByRole = async (role: UserRole): Promise<User[]> => {
-    try {
-      const users = await getAllItems<User>("users");
-      return users.filter(user => user.role === role);
-    } catch (error) {
-      console.error(`Failed to get users with role ${role}:`, error);
-      return [];
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      loading, 
-      login, 
+    <AuthContext.Provider value={{
+      currentUser,
+      loading,
+      login,
       logout,
       checkAuth,
       getUserById,
-      getUsersByRole
+      getUsersByRole: getUsersByRole
     }}>
       {children}
     </AuthContext.Provider>

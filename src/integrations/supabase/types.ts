@@ -9,7 +9,283 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      approvals: {
+        Row: {
+          action: string
+          approval_id: number
+          approver_id: number
+          comments: string | null
+          decision_date: string
+          request_id: number
+          ticket_option_id: number | null
+        }
+        Insert: {
+          action: string
+          approval_id?: number
+          approver_id: number
+          comments?: string | null
+          decision_date?: string
+          request_id: number
+          ticket_option_id?: number | null
+        }
+        Update: {
+          action?: string
+          approval_id?: number
+          approver_id?: number
+          comments?: string | null
+          decision_date?: string
+          request_id?: number
+          ticket_option_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action_type: string
+          after_state: Json
+          before_state: Json
+          ip_address: string
+          log_id: number
+          request_id: number
+          timestamp: string
+          user_id: number
+        }
+        Insert: {
+          action_type: string
+          after_state: Json
+          before_state: Json
+          ip_address: string
+          log_id?: number
+          request_id: number
+          timestamp?: string
+          user_id: number
+        }
+        Update: {
+          action_type?: string
+          after_state?: Json
+          before_state?: Json
+          ip_address?: string
+          log_id?: number
+          request_id?: number
+          timestamp?: string
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["request_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: number
+          message: string
+          read: boolean
+          request_id: number | null
+          title: string
+          type: string
+          user_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          message: string
+          read?: boolean
+          request_id?: number | null
+          title: string
+          type: string
+          user_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          message?: string
+          read?: boolean
+          request_id?: number | null
+          title?: string
+          type?: string
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requests: {
+        Row: {
+          approval_chain: Json
+          created_at: string
+          current_status: string
+          request_id: number
+          requester_id: number
+          selected_ticket_id: number | null
+          travel_details: Json
+          updated_at: string
+          version_history: Json
+        }
+        Insert: {
+          approval_chain: Json
+          created_at?: string
+          current_status: string
+          request_id?: number
+          requester_id: number
+          selected_ticket_id?: number | null
+          travel_details: Json
+          updated_at?: string
+          version_history: Json
+        }
+        Update: {
+          approval_chain?: Json
+          created_at?: string
+          current_status?: string
+          request_id?: number
+          requester_id?: number
+          selected_ticket_id?: number | null
+          travel_details?: Json
+          updated_at?: string
+          version_history?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_options: {
+        Row: {
+          added_by_admin_id: number
+          added_date: string
+          arrival_time: string | null
+          carrier: string
+          carrier_rating: number | null
+          class: string
+          departure_time: string | null
+          flight_duration: string | null
+          option_id: number
+          price: number
+          refundable: boolean
+          request_id: number
+          stops: number | null
+          validity_end: string
+          validity_start: string
+        }
+        Insert: {
+          added_by_admin_id: number
+          added_date?: string
+          arrival_time?: string | null
+          carrier: string
+          carrier_rating?: number | null
+          class: string
+          departure_time?: string | null
+          flight_duration?: string | null
+          option_id?: number
+          price: number
+          refundable?: boolean
+          request_id: number
+          stops?: number | null
+          validity_end: string
+          validity_start: string
+        }
+        Update: {
+          added_by_admin_id?: number
+          added_date?: string
+          arrival_time?: string | null
+          carrier?: string
+          carrier_rating?: number | null
+          class?: string
+          departure_time?: string | null
+          flight_duration?: string | null
+          option_id?: number
+          price?: number
+          refundable?: boolean
+          request_id?: number
+          stops?: number | null
+          validity_end?: string
+          validity_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_options_added_by_admin_id_fkey"
+            columns: ["added_by_admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_options_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar: string | null
+          department: string
+          email: string
+          hierarchy_chain: number[]
+          id: number
+          name: string
+          role: string
+        }
+        Insert: {
+          avatar?: string | null
+          department: string
+          email: string
+          hierarchy_chain: number[]
+          id?: number
+          name: string
+          role: string
+        }
+        Update: {
+          avatar?: string | null
+          department?: string
+          email?: string
+          hierarchy_chain?: number[]
+          id?: number
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
