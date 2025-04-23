@@ -26,7 +26,8 @@ import {
   addTicketOption as apiAddTicketOption,
   addAuditLogApi,
   getAuditLogs,
-  addNotification
+  addNotification,
+  ensureUserExists
 } from "@/integrations/supabase/api";
 
 interface WorkflowContextType {
@@ -80,20 +81,41 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   const createRequest = async (request: Omit<TravelRequest, "request_id" | "created_at" | "updated_at" | "current_status" | "version_history">): Promise<number> => {
     const now = new Date().toISOString();
 
-    const requestId = await createRequestApi({
-      ...request,
-      current_status: "draft",
-      created_at: now,
-      updated_at: now,
-      version_history: [
-        {
-          timestamp: now,
-          user_id: request.requester_id,
-          changeset: { type: "create", details: "Initial request creation" }
+    try {
+      if (currentUser) {
+        await ensureUserExists(currentUser);
+        
+        for (const approver of request.approval_chain) {
+          const approverUser = await apiGetUserById(approver.user_id);
+          if (!approverUser) {
+            const demoUsers = JSON.parse(localStorage.getItem('demoUsers') || '[]');
+            const demoApprover = demoUsers.find((user: User) => user.id === approver.user_id);
+            
+            if (demoApprover) {
+              await ensureUserExists(demoApprover);
+            }
+          }
         }
-      ]
-    });
-    return requestId;
+      }
+
+      const requestId = await createRequestApi({
+        ...request,
+        current_status: "draft",
+        created_at: now,
+        updated_at: now,
+        version_history: [
+          {
+            timestamp: now,
+            user_id: request.requester_id,
+            changeset: { type: "create", details: "Initial request creation" }
+          }
+        ]
+      });
+      return requestId;
+    } catch (error) {
+      console.error("Error in createRequest:", error);
+      throw error;
+    }
   };
 
   const updateRequest = async (request: TravelRequest) => {

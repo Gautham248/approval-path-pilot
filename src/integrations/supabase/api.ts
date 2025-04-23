@@ -1,3 +1,4 @@
+
 import { supabase } from "./client";
 import {
   User, TravelRequest, Approval, TicketOption, AuditLog, Notification, UserRole, RequestStatus,
@@ -44,9 +45,57 @@ export async function getUsersByRole(role: UserRole): Promise<User[]> {
 }
 
 export async function createUser(user: Omit<User, "id">): Promise<number> {
-  const { data, error } = await supabase.from("users").insert([user]).select("id").single();
-  if (error) throw error;
-  return data.id;
+  try {
+    // Check if user with this email already exists
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", user.email)
+      .maybeSingle();
+    
+    if (existingUser) {
+      console.log(`User with email ${user.email} already exists with id ${existingUser.id}`);
+      return existingUser.id;
+    }
+    
+    // Create new user
+    const { data, error } = await supabase.from("users").insert([user]).select("id").single();
+    if (error) throw error;
+    console.log(`Created new user with id ${data.id}`);
+    return data.id;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw error;
+  }
+}
+
+// Helper function to ensure user exists in database
+export async function ensureUserExists(user: User): Promise<number> {
+  try {
+    // Check if user already exists
+    const existingUser = await getUserById(user.id);
+    if (existingUser) {
+      return existingUser.id;
+    }
+    
+    // If not, create the user
+    const { data, error } = await supabase.from("users").insert([{
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      hierarchy_chain: user.hierarchy_chain,
+      avatar: user.avatar
+    }]).select("id").single();
+    
+    if (error) throw error;
+    console.log(`Created user with ID ${data.id}`);
+    return data.id;
+  } catch (error) {
+    console.error("Error ensuring user exists:", error);
+    throw error;
+  }
 }
 
 // REQUESTS
@@ -69,10 +118,21 @@ export async function getRequestById(requestId: number): Promise<TravelRequest |
 }
 
 export async function createRequestApi(request: Omit<TravelRequest, "request_id">): Promise<number> {
-  const requestToInsert = transformRequestForDB(request);
-  const { data, error } = await supabase.from("requests").insert([requestToInsert]).select("request_id").single();
-  if (error) throw error;
-  return data.request_id;
+  try {
+    // Ensure requester exists in the database first
+    const user = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (user) {
+      await ensureUserExists(user);
+    }
+    
+    const requestToInsert = transformRequestForDB(request);
+    const { data, error } = await supabase.from("requests").insert([requestToInsert]).select("request_id").single();
+    if (error) throw error;
+    return data.request_id;
+  } catch (error) {
+    console.error("Error creating request:", error);
+    throw error;
+  }
 }
 
 export async function updateRequestApi(request: TravelRequest): Promise<void> {
