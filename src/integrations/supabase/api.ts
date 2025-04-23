@@ -1,4 +1,3 @@
-
 import { supabase } from "./client";
 import {
   User, TravelRequest, Approval, TicketOption, AuditLog, Notification, UserRole, RequestStatus,
@@ -8,21 +7,31 @@ import { Json } from "@/integrations/supabase/types";
 
 // USERS
 export async function getAllUsers(): Promise<User[]> {
-  const { data, error } = await supabase.from("users").select("*");
-  if (error) throw error;
-  return data.map(user => ({
-    ...user,
-    role: user.role as UserRole
-  }));
+  try {
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) throw error;
+    return data.map(user => ({
+      ...user,
+      role: user.role as UserRole
+    }));
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    return [];
+  }
 }
 
 export async function getUserById(id: number): Promise<User | null> {
-  const { data, error } = await supabase.from("users").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
-  return data ? {
-    ...data,
-    role: data.role as UserRole
-  } : null;
+  try {
+    const { data, error } = await supabase.from("users").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? {
+      ...data,
+      role: data.role as UserRole
+    } : null;
+  } catch (error) {
+    console.error(`Error fetching user with ID ${id}:`, error);
+    return null;
+  }
 }
 
 export async function getUsersByRole(role: UserRole): Promise<User[]> {
