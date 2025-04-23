@@ -57,17 +57,22 @@ const LoginForm = () => {
   const onSubmit = async (data: FormValues) => {
     setError(null);
     setIsLoading(true);
+    console.log("Submitting login form with data:", data);
 
     try {
       const success = await login(data.email, data.password);
+      console.log("Login result:", success);
+      
       if (success) {
+        console.log("Login successful, navigating to /");
         navigate("/");
       } else {
+        console.log("Login failed, showing error");
         setError("Invalid email or password. Please try again.");
       }
     } catch (error) {
-      setError("An error occurred during login. Please try again.");
       console.error("Login error:", error);
+      setError("An error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
     }

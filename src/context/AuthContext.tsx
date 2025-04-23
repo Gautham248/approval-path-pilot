@@ -3,23 +3,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { User, UserRole } from "@/types";
 import { getUserById, getAllUsers, getUsersByRole } from "@/integrations/supabase/api";
 
-// Travel Request Management System Types
-
-// User role types
-// Request status types
-// Approval action types
-// Audit log action types
-
-// User interface
-// Travel details interface
-// Approval chain step interface
-// Version history entry interface
-// Travel request interface
-// Approval interface
-// Ticket option interface
-// Audit log interface
-// Notification interface
-
 // Demo users for development when Supabase has no data
 const DEMO_USERS: User[] = [
   { 
@@ -110,19 +93,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem("currentUserId", String(user.id));
           return true;
         }
-      } else {
-        // If no users in Supabase, fallback to demo users for development
-        console.log("No users found in database, using demo users");
-        const demoUser = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (demoUser) {
-          console.log("Demo user found:", demoUser);
-          setCurrentUser(demoUser);
-          localStorage.setItem("currentUserId", String(demoUser.id));
-          // Also store the demo users list for other parts of the app
-          localStorage.setItem("demoUsers", JSON.stringify(DEMO_USERS));
-          return true;
-        }
+      }
+      
+      // If no users in Supabase or user not found, fallback to demo users
+      console.log("No matching user in database, trying demo users");
+      const demoUser = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+      
+      if (demoUser) {
+        console.log("Demo user found:", demoUser);
+        setCurrentUser(demoUser);
+        localStorage.setItem("currentUserId", String(demoUser.id));
+        // Also store the demo users list for other parts of the app
+        localStorage.setItem("demoUsers", JSON.stringify(DEMO_USERS));
+        return true;
       }
       
       console.log("No user found with email:", email);
